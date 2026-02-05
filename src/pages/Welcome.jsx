@@ -1,7 +1,17 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const Welcome = () => {
   const navigate = useNavigate();
+  const [isDark, setIsDark] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    return saved ? saved === 'dark' : true; // Default to dark
+  });
+
+  // Save theme preference
+  useEffect(() => {
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  }, [isDark]);
 
   // Plane SVG component
   const Plane = ({ className, size = 40 }) => (
@@ -16,48 +26,88 @@ const Welcome = () => {
     </svg>
   );
 
+  // Background images for each mode
+  const darkBgImage = '/images/welcome/485798569_1210287077193497_3667196745893921462_n.jpg';
+  const lightBgImage = '/images/welcome/Passenger-terminal-outlook.jpg';
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-900 to-gray-900 flex flex-col overflow-hidden relative">
+    <div className={`min-h-screen flex flex-col overflow-hidden relative ${isDark ? 'theme-dark' : 'theme-light'}`}>
+      {/* Background Image */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center transition-opacity duration-700"
+        style={{
+          backgroundImage: `url(${isDark ? darkBgImage : lightBgImage})`,
+        }}
+      />
+      {/* Overlay for readability */}
+      <div className={`absolute inset-0 transition-colors duration-500 ${
+        isDark 
+          ? 'bg-slate-900/80' 
+          : 'bg-white/55'
+      }`} />
       {/* Flying Planes Background */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-10">
         {/* Planes flying left to right */}
-        <Plane className="flying-plane plane-right plane-1 text-blue-400/50" size={40} />
-        <Plane className="flying-plane plane-right plane-2 text-indigo-400/35" size={28} />
-        <Plane className="flying-plane plane-right plane-3 text-cyan-400/30" size={22} />
-        <Plane className="flying-plane plane-right plane-4 text-blue-300/40" size={34} />
+        <Plane className={`flying-plane plane-right plane-1 ${isDark ? 'text-blue-400/50' : 'text-orange-500/60'}`} size={40} />
+        <Plane className={`flying-plane plane-right plane-2 ${isDark ? 'text-indigo-400/35' : 'text-rose-500/50'}`} size={28} />
+        <Plane className={`flying-plane plane-right plane-3 ${isDark ? 'text-cyan-400/30' : 'text-amber-600/45'}`} size={22} />
+        <Plane className={`flying-plane plane-right plane-4 ${isDark ? 'text-blue-300/40' : 'text-red-500/50'}`} size={34} />
         {/* Planes flying right to left */}
-        <Plane className="flying-plane plane-left plane-5 text-purple-400/35" size={32} />
-        <Plane className="flying-plane plane-left plane-6 text-blue-400/25" size={26} />
-        <Plane className="flying-plane plane-left plane-7 text-indigo-300/30" size={24} />
+        <Plane className={`flying-plane plane-left plane-5 ${isDark ? 'text-purple-400/35' : 'text-teal-600/55'}`} size={32} />
+        <Plane className={`flying-plane plane-left plane-6 ${isDark ? 'text-blue-400/25' : 'text-orange-600/45'}`} size={26} />
+        <Plane className={`flying-plane plane-left plane-7 ${isDark ? 'text-indigo-300/30' : 'text-emerald-600/50'}`} size={24} />
         {/* Planes flying bottom to top */}
-        <Plane className="flying-plane plane-up plane-8 text-cyan-400/35" size={30} />
-        <Plane className="flying-plane plane-up plane-9 text-purple-300/30" size={28} />
+        <Plane className={`flying-plane plane-up plane-8 ${isDark ? 'text-cyan-400/35' : 'text-sky-600/55'}`} size={30} />
+        <Plane className={`flying-plane plane-up plane-9 ${isDark ? 'text-purple-300/30' : 'text-violet-500/50'}`} size={28} />
       </div>
       {/* Header */}
-      <header className="p-6 animate-slide-in-left">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-            <svg
-              className="w-6 h-6 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-              />
-            </svg>
+      <header className="p-6 animate-slide-in-left relative z-20">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+              <svg
+                className="w-6 h-6 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                />
+              </svg>
+            </div>
+            <span className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>AirApp</span>
+            <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full ml-2">Admin</span>
           </div>
-          <span className="text-2xl font-bold text-white">AirApp</span>
-          <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full ml-2">Admin</span>
+          
+          {/* Theme Toggle */}
+          <button
+            onClick={() => setIsDark(!isDark)}
+            className={`p-3 rounded-xl transition-all duration-300 ${
+              isDark 
+                ? 'bg-white/10 hover:bg-white/20 text-yellow-400' 
+                : 'bg-gray-800/10 hover:bg-gray-800/20 text-gray-700'
+            }`}
+            title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            {isDark ? (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+            ) : (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+              </svg>
+            )}
+          </button>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+      <main className="flex-1 flex flex-col items-center justify-center px-6 text-center relative z-20">
         {/* Admin Icon with Glow */}
         <div className="mb-8 animate-fade-in">
           <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center animate-glow">
@@ -78,13 +128,13 @@ const Welcome = () => {
         </div>
 
         {/* Title with Shimmer */}
-        <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 animate-slide-in-left-delay-1 relative">
+        <h1 className={`text-4xl md:text-5xl font-bold mb-4 animate-slide-in-left-delay-1 relative ${isDark ? 'text-white' : 'text-gray-900'}`}>
           <span className="relative">
             Airport Management System
             <span className="absolute inset-0 shimmer-effect rounded-lg"></span>
           </span>
         </h1>
-        <p className="text-lg md:text-xl mb-12 max-w-lg leading-relaxed" style={{ color: '#b5bac2' }}>
+        <p className={`text-lg md:text-xl mb-12 max-w-lg leading-relaxed ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>
           {['Secure', 'admin', 'portal', 'for', 'managing', 'airport', 'operations,', 'payments,', 'data', 'analytics,', 'and', 'system', 'monitoring.'].map((word, index) => (
             <span 
               key={index} 
@@ -98,41 +148,49 @@ const Welcome = () => {
 
         {/* Features with Card Lift and Icon Bounce */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12 max-w-2xl w-full">
-          <div className="flex flex-col items-center bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 card-lift icon-bounce animate-slide-in-left-delay-1">
+          <div className={`flex flex-col items-center backdrop-blur-sm rounded-xl p-4 border card-lift icon-bounce animate-slide-in-left-delay-1 ${
+            isDark ? 'bg-white/5 border-white/10' : 'bg-white/80 border-gray-200 shadow-lg'
+          }`}>
             <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center mb-3 icon-target">
-              <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <span className="text-white text-sm font-medium">Payments</span>
-            <span className="text-gray-500 text-xs">Track & Manage</span>
+            <span className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>Payments</span>
+            <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Track & Manage</span>
           </div>
-          <div className="flex flex-col items-center bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 card-lift icon-bounce animate-slide-in-left-delay-2">
+          <div className={`flex flex-col items-center backdrop-blur-sm rounded-xl p-4 border card-lift icon-bounce animate-slide-in-left-delay-2 ${
+            isDark ? 'bg-white/5 border-white/10' : 'bg-white/80 border-gray-200 shadow-lg'
+          }`}>
             <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mb-3 icon-target">
-              <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
             </div>
-            <span className="text-white text-sm font-medium">Analytics</span>
-            <span className="text-gray-500 text-xs">Reports & Graphs</span>
+            <span className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>Analytics</span>
+            <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Reports & Graphs</span>
           </div>
-          <div className="flex flex-col items-center bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 card-lift icon-bounce animate-slide-in-left-delay-3">
+          <div className={`flex flex-col items-center backdrop-blur-sm rounded-xl p-4 border card-lift icon-bounce animate-slide-in-left-delay-3 ${
+            isDark ? 'bg-white/5 border-white/10' : 'bg-white/80 border-gray-200 shadow-lg'
+          }`}>
             <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mb-3 icon-target">
-              <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
               </svg>
             </div>
-            <span className="text-white text-sm font-medium">Database</span>
-            <span className="text-gray-500 text-xs">Data Management</span>
+            <span className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>Database</span>
+            <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Data Management</span>
           </div>
-          <div className="flex flex-col items-center bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 card-lift icon-bounce animate-slide-in-left-delay-4">
+          <div className={`flex flex-col items-center backdrop-blur-sm rounded-xl p-4 border card-lift icon-bounce animate-slide-in-left-delay-4 ${
+            isDark ? 'bg-white/5 border-white/10' : 'bg-white/80 border-gray-200 shadow-lg'
+          }`}>
             <div className="w-12 h-12 bg-red-500/20 rounded-lg flex items-center justify-center mb-3 icon-target">
-              <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
             </div>
-            <span className="text-white text-sm font-medium">Security</span>
-            <span className="text-gray-500 text-xs">Cybersecurity</span>
+            <span className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>Security</span>
+            <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Cybersecurity</span>
           </div>
         </div>
 
@@ -146,14 +204,18 @@ const Welcome = () => {
           </button>
           <button
             onClick={() => navigate('/signup')}
-            className="flex-1 bg-white/10 border border-white/20 text-white font-semibold py-4 px-8 rounded-xl transform hover:-translate-y-0.5 transition-all duration-200 btn-ripple glow-on-hover-secondary"
+            className={`flex-1 font-semibold py-4 px-8 rounded-xl transform hover:-translate-y-0.5 transition-all duration-200 btn-ripple ${
+              isDark 
+                ? 'bg-white/10 border border-white/20 text-white glow-on-hover-secondary' 
+                : 'bg-gray-800 text-white hover:bg-gray-700'
+            }`}
           >
             Request Access
           </button>
         </div>
 
         {/* Security Note */}
-        <p className="mt-8 text-gray-500 text-sm flex items-center gap-2 animate-fade-in-delay-3">
+        <p className={`mt-8 text-sm flex items-center gap-2 animate-fade-in-delay-3 ${isDark ? 'text-gray-500' : 'text-gray-700'}`}>
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
@@ -162,8 +224,8 @@ const Welcome = () => {
       </main>
 
       {/* Footer */}
-      <footer className="p-6 text-center animate-fade-in-delay-3">
-        <p className="text-gray-600 text-sm">
+      <footer className="p-6 text-center animate-fade-in-delay-3 relative z-20">
+        <p className={`text-sm ${isDark ? 'text-gray-600' : 'text-gray-700'}`}>
           © 2025 AirApp Management System. Secure Admin Portal.
         </p>
       </footer>
