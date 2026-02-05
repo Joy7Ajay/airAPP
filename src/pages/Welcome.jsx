@@ -23,10 +23,15 @@ const Welcome = () => {
         {/* Planes flying left to right */}
         <Plane className="flying-plane plane-right plane-1 text-blue-400/50" size={40} />
         <Plane className="flying-plane plane-right plane-2 text-indigo-400/35" size={28} />
-        <Plane className="flying-plane plane-right plane-3 text-cyan-400/25" size={22} />
+        <Plane className="flying-plane plane-right plane-3 text-cyan-400/30" size={22} />
+        <Plane className="flying-plane plane-right plane-4 text-blue-300/40" size={34} />
         {/* Planes flying right to left */}
-        <Plane className="flying-plane plane-left plane-4 text-blue-300/30" size={32} />
-        <Plane className="flying-plane plane-left plane-5 text-purple-400/20" size={24} />
+        <Plane className="flying-plane plane-left plane-5 text-purple-400/35" size={32} />
+        <Plane className="flying-plane plane-left plane-6 text-blue-400/25" size={26} />
+        <Plane className="flying-plane plane-left plane-7 text-indigo-300/30" size={24} />
+        {/* Planes flying bottom to top */}
+        <Plane className="flying-plane plane-up plane-8 text-cyan-400/35" size={30} />
+        <Plane className="flying-plane plane-up plane-9 text-purple-300/30" size={28} />
       </div>
       {/* Header */}
       <header className="p-6 animate-slide-in-left">
@@ -79,8 +84,16 @@ const Welcome = () => {
             <span className="absolute inset-0 shimmer-effect rounded-lg"></span>
           </span>
         </h1>
-        <p className="text-lg md:text-xl text-gray-400 mb-12 max-w-lg animate-slide-in-left-delay-2">
-          Secure admin portal for managing airport operations, payments, data analytics, and system monitoring.
+        <p className="text-lg md:text-xl mb-12 max-w-lg leading-relaxed" style={{ color: '#b5bac2' }}>
+          {['Secure', 'admin', 'portal', 'for', 'managing', 'airport', 'operations,', 'payments,', 'data', 'analytics,', 'and', 'system', 'monitoring.'].map((word, index) => (
+            <span 
+              key={index} 
+              className="word-fade-hover"
+              style={{ animationDelay: `${0.5 + index * 0.1}s` }}
+            >
+              {word}{' '}
+            </span>
+          ))}
         </p>
 
         {/* Features with Card Lift and Icon Bounce */}

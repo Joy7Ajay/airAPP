@@ -152,13 +152,57 @@ body {
 
 /* Card Lift on Hover */
 .card-lift {
+  position: relative;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
 }
 
 .card-lift:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-8px) scale(1.45) !important;
+  box-shadow: 0 0 25px rgba(59, 130, 246, 0.4),
+              0 0 50px rgba(99, 102, 241, 0.3),
+              0 0 75px rgba(139, 92, 246, 0.2),
+              0 20px 40px rgba(0, 0, 0, 0.3);
+  border-color: rgba(99, 102, 241, 0.5);
+  z-index: 50;
+}
+
+/* Word Fade In + Hover Enlarge (Accessibility) */
+@keyframes wordFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.word-fade-hover {
+  display: inline-block;
+  opacity: 0;
+  cursor: pointer;
+  margin-right: 7px;
+  transition: transform 0.3s ease, color 0.2s ease;
+  animation: wordFadeIn 0.5s ease-out forwards;
+  transform-origin: center center;
+}
+
+.word-fade-hover:hover {
+  transform: scale(1.25) !important;
+  color: #67e8f9;
+  font-weight: bold;
+  z-index: 50;
+  position: relative;
+  margin-left: 8px;
+  margin-right: 15px;
+  text-shadow: 
+    -1px -1px 0 #0f172a,
+    1px -1px 0 #0f172a,
+    -1px 1px 0 #0f172a,
+    1px 1px 0 #0f172a,
+    0 0 10px rgba(34, 211, 238, 0.6);
 }
 
 /* Icon Bounce on Hover */
@@ -228,6 +272,16 @@ body {
   }
 }
 
+/* Flying bottom to top - continuous loop */
+@keyframes flyUp {
+  0% {
+    top: 100%;
+  }
+  100% {
+    top: -60px;
+  }
+}
+
 .flying-plane {
   position: absolute;
   pointer-events: none;
@@ -240,20 +294,23 @@ body {
 }
 
 .plane-1 {
-  top: 12%;
-  animation: flyRight 18s linear infinite;
+  top: 8%;
+  animation: flyRight 10s linear infinite;
 }
 
 .plane-2 {
-  top: 40%;
+  top: 30%;
   animation: flyRight 24s linear infinite;
-  animation-delay: 6s;
 }
 
 .plane-3 {
-  top: 70%;
+  top: 50%;
   animation: flyRight 30s linear infinite;
-  animation-delay: 10s;
+}
+
+.plane-4 {
+  top: 75%;
+  animation: flyRight 20s linear infinite;
 }
 
 /* Planes flying to the left */
@@ -261,14 +318,32 @@ body {
   transform: rotate(-90deg);
 }
 
-.plane-4 {
-  top: 55%;
+.plane-5 {
+  top: 20%;
   animation: flyLeft 22s linear infinite;
-  animation-delay: 4s;
 }
 
-.plane-5 {
-  top: 85%;
+.plane-6 {
+  top: 60%;
+  animation: flyLeft 12s linear infinite;
+}
+
+.plane-7 {
+  top: 88%;
   animation: flyLeft 28s linear infinite;
-  animation-delay: 14s;
+}
+
+/* Planes flying bottom to top */
+.plane-up {
+  transform: rotate(0deg);
+}
+
+.plane-8 {
+  left: 25%;
+  animation: flyUp 10s linear infinite;
+}
+
+.plane-9 {
+  left: 75%;
+  animation: flyUp 16s linear infinite;
 }
