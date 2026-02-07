@@ -16,6 +16,25 @@ const AdminDashboard = () => {
   const [actionLoading, setActionLoading] = useState(null);
   const [rejectModal, setRejectModal] = useState({ show: false, userId: null, userName: '' });
   const [rejectReason, setRejectReason] = useState('');
+  
+  // Security features state
+  const [activeSection, setActiveSection] = useState('requests'); // 'requests', 'security', 'audit'
+  const [approvedUsers, setApprovedUsers] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [pendingTransfer, setPendingTransfer] = useState(null);
+  
+  // Admin transfer modal state
+  const [transferModal, setTransferModal] = useState({ show: false });
+  const [transferData, setTransferData] = useState({ targetUserId: '', password: '' });
+  const [transferLoading, setTransferLoading] = useState(false);
+  const [transferError, setTransferError] = useState('');
+  
+  // Delete user modal state
+  const [deleteModal, setDeleteModal] = useState({ show: false, user: null });
+  const [deleteData, setDeleteData] = useState({ password: '', confirmText: '', confirmEmail: '', reason: '' });
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const [pendingDeletions, setPendingDeletions] = useState([]);
 
   const token = localStorage.getItem('token');
 
@@ -164,6 +183,194 @@ const AdminDashboard = () => {
     navigate('/login');
   };
 
+  // Fetch security data
+  useEffect(() => {
+    if (!user || activeSection !== 'security') return;
+
+    const fetchSecurityData = async () => {
+      try {
+        // Fetch approved users for transfer selection
+        const usersRes = await fetch(`${API_URL}/admin/users`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const usersData = await usersRes.json();
+        setApprovedUsers(usersData.users || []);
+
+        // Fetch pending transfer status
+        const transferRes = await fetch(`${API_URL}/admin/transfer/status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const transferData = await transferRes.json();
+        setPendingTransfer(transferData.transfer);
+
+        // Fetch pending deletions
+        const deleteRes = await fetch(`${API_URL}/admin/delete/pending`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const deleteData = await deleteRes.json();
+        setPendingDeletions(deleteData.requests || []);
+
+      } catch (error) {
+        console.error('Error fetching security data:', error);
+      }
+    };
+
+    fetchSecurityData();
+  }, [user, activeSection, token]);
+
+  // Fetch audit logs
+  useEffect(() => {
+    if (!user || activeSection !== 'audit') return;
+
+    const fetchAuditLogs = async () => {
+      try {
+        const res = await fetch(`${API_URL}/admin/audit-logs?limit=100`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setAuditLogs(data.logs || []);
+      } catch (error) {
+        console.error('Error fetching audit logs:', error);
+      }
+    };
+
+    fetchAuditLogs();
+  }, [user, activeSection, token]);
+
+  // Handle admin transfer initiation
+  const handleTransferSubmit = async () => {
+    setTransferError('');
+    
+    if (!transferData.targetUserId || !transferData.password) {
+      setTransferError('Please select a user and enter your password');
+      return;
+    }
+
+    setTransferLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/admin/transfer/initiate`, {
+        method: 'POST',
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(transferData),
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        setTransferError(data.message);
+        setTransferLoading(false);
+        return;
+      }
+      
+      alert(data.message);
+      setTransferModal({ show: false });
+      setTransferData({ targetUserId: '', password: '' });
+      setPendingTransfer({ completes_at: data.completesAt });
+      
+    } catch (error) {
+      setTransferError('Unable to connect to server');
+    } finally {
+      setTransferLoading(false);
+    }
+  };
+
+  // Cancel admin transfer
+  const handleCancelTransfer = async () => {
+    if (!confirm('Are you sure you want to cancel the admin transfer?')) return;
+
+    try {
+      const res = await fetch(`${API_URL}/admin/transfer/cancel`, {
+        method: 'POST',
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reason: 'Cancelled by admin' }),
+      });
+      
+      if (res.ok) {
+        alert('Admin transfer cancelled');
+        setPendingTransfer(null);
+      }
+    } catch (error) {
+      alert('Error cancelling transfer');
+    }
+  };
+
+  // Handle delete user submission
+  const handleDeleteSubmit = async () => {
+    setDeleteError('');
+    
+    if (!deleteData.password || deleteData.confirmText !== 'DELETE' || !deleteData.confirmEmail) {
+      setDeleteError('Please complete all confirmation fields');
+      return;
+    }
+
+    setDeleteLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/admin/delete/initiate`, {
+        method: 'POST',
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          targetUserId: deleteModal.user.id,
+          password: deleteData.password,
+          confirmText: deleteData.confirmText,
+          confirmEmail: deleteData.confirmEmail,
+          reason: deleteData.reason,
+        }),
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        setDeleteError(data.message);
+        setDeleteLoading(false);
+        return;
+      }
+      
+      alert(data.message);
+      setDeleteModal({ show: false, user: null });
+      setDeleteData({ password: '', confirmText: '', confirmEmail: '', reason: '' });
+      
+      // Refresh pending deletions
+      const deleteRes = await fetch(`${API_URL}/admin/delete/pending`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const deleteResData = await deleteRes.json();
+      setPendingDeletions(deleteResData.requests || []);
+      
+    } catch (error) {
+      setDeleteError('Unable to connect to server');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  // Cancel deletion request
+  const handleCancelDeletion = async (deletionId) => {
+    if (!confirm('Cancel this deletion request?')) return;
+
+    try {
+      const res = await fetch(`${API_URL}/admin/delete/cancel/${deletionId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      if (res.ok) {
+        setPendingDeletions(prev => prev.filter(d => d.id !== deletionId));
+        alert('Deletion request cancelled');
+      }
+    } catch (error) {
+      alert('Error cancelling deletion');
+    }
+  };
+
   const formatDate = (dateStr) => {
     return new Date(dateStr).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -268,6 +475,52 @@ const AdminDashboard = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-8">
+        {/* Section Navigation */}
+        <div className="flex gap-4 mb-8">
+          <button
+            onClick={() => setActiveSection('requests')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+              activeSection === 'requests'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-800 text-gray-400 hover:text-white'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            Access Requests
+          </button>
+          <button
+            onClick={() => setActiveSection('security')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+              activeSection === 'security'
+                ? 'bg-red-500 text-white'
+                : 'bg-gray-800 text-gray-400 hover:text-white'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            Security
+          </button>
+          <button
+            onClick={() => setActiveSection('audit')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+              activeSection === 'audit'
+                ? 'bg-purple-500 text-white'
+                : 'bg-gray-800 text-gray-400 hover:text-white'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Audit Logs
+          </button>
+        </div>
+
+        {/* === REQUESTS SECTION === */}
+        {activeSection === 'requests' && (
+          <>
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 rounded-xl p-6 border border-yellow-500/30">
@@ -419,6 +672,245 @@ const AdminDashboard = () => {
             </table>
           )}
         </div>
+          </>
+        )}
+
+        {/* === SECURITY SECTION === */}
+        {activeSection === 'security' && (
+          <div className="space-y-8">
+            {/* Admin Transfer Section */}
+            <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 bg-red-500/20 rounded-lg flex items-center justify-center">
+                  <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">Admin Transfer</h2>
+                  <p className="text-gray-400 text-sm">Transfer admin privileges to another user</p>
+                </div>
+              </div>
+
+              {pendingTransfer ? (
+                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <svg className="w-6 h-6 text-yellow-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div className="flex-1">
+                      <p className="text-yellow-400 font-medium">Transfer in Progress</p>
+                      <p className="text-gray-400 text-sm mt-1">
+                        Admin transfer is pending. Both parties must confirm via email.
+                        <br />
+                        Completes: {formatDate(pendingTransfer.completes_at)}
+                      </p>
+                      <button
+                        onClick={handleCancelTransfer}
+                        className="mt-3 px-4 py-2 bg-red-500/20 text-red-400 rounded-lg text-sm font-medium hover:bg-red-500/30 transition-colors"
+                      >
+                        Cancel Transfer
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-gray-400 mb-4">
+                    Transferring admin rights requires:
+                  </p>
+                  <ul className="list-disc list-inside text-gray-400 space-y-1 mb-6 text-sm">
+                    <li>Password re-authentication</li>
+                    <li>Email confirmation from both parties</li>
+                    <li>48-hour waiting period</li>
+                    <li>Cannot be undone easily</li>
+                  </ul>
+                  <button
+                    onClick={() => setTransferModal({ show: true })}
+                    className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
+                  >
+                    Initiate Admin Transfer
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Delete User Section */}
+            <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 bg-red-500/20 rounded-lg flex items-center justify-center">
+                  <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">Delete User</h2>
+                  <p className="text-gray-400 text-sm">Soft delete with user verification</p>
+                </div>
+              </div>
+
+              <p className="text-gray-400 mb-4">
+                Deleting a user requires:
+              </p>
+              <ul className="list-disc list-inside text-gray-400 space-y-1 mb-6 text-sm">
+                <li>Type "DELETE" to confirm</li>
+                <li>Enter your admin email</li>
+                <li>Re-authenticate with password</li>
+                <li>User receives email to confirm deletion</li>
+                <li><span className="text-yellow-400">30-minute response window</span> - if ignored, deletion auto-cancels</li>
+                <li>Data preserved for 30 days (soft delete)</li>
+              </ul>
+
+              {/* User list for deletion */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-300 mb-3">Select a user to delete:</p>
+                {approvedUsers.length === 0 ? (
+                  <p className="text-gray-500">No approved users to delete</p>
+                ) : (
+                  <div className="grid gap-2 max-h-64 overflow-y-auto">
+                    {approvedUsers.map((u) => (
+                      <div
+                        key={u.id}
+                        className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg"
+                      >
+                        <div>
+                          <p className="text-white font-medium">{u.full_name}</p>
+                          <p className="text-gray-400 text-sm">{u.email}</p>
+                        </div>
+                        <button
+                          onClick={() => setDeleteModal({ show: true, user: u })}
+                          className="px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg text-sm font-medium hover:bg-red-500/30 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Pending Deletions */}
+              {pendingDeletions.length > 0 && (
+                <div className="mt-6 pt-6 border-t border-gray-700">
+                  <h3 className="text-lg font-semibold text-white mb-4">Pending Deletions</h3>
+                  <div className="space-y-2">
+                    {pendingDeletions.map((d) => {
+                      const expiresAt = d.expires_at ? new Date(d.expires_at) : null;
+                      const now = new Date();
+                      const isExpired = expiresAt && expiresAt < now;
+                      const minutesLeft = expiresAt ? Math.max(0, Math.ceil((expiresAt - now) / 60000)) : null;
+                      
+                      return (
+                        <div
+                          key={d.id}
+                          className={`flex items-center justify-between p-3 rounded-lg ${
+                            isExpired 
+                              ? 'bg-gray-500/10 border border-gray-500/30' 
+                              : 'bg-yellow-500/10 border border-yellow-500/30'
+                          }`}
+                        >
+                          <div>
+                            <p className={`font-medium ${isExpired ? 'text-gray-400' : 'text-yellow-400'}`}>
+                              {d.target_name}
+                            </p>
+                            <p className="text-gray-400 text-sm">
+                              {isExpired 
+                                ? 'Expired - auto-cancelled (user did not respond)'
+                                : minutesLeft !== null 
+                                  ? `Waiting for user verification (${minutesLeft} min left)`
+                                  : 'Waiting for user verification'
+                              }
+                            </p>
+                          </div>
+                          {!isExpired && (
+                            <button
+                              onClick={() => handleCancelDeletion(d.id)}
+                              className="px-3 py-1.5 bg-gray-700 text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-600 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* === AUDIT LOGS SECTION === */}
+        {activeSection === 'audit' && (
+          <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+            <div className="p-6 border-b border-gray-700">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                  <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">Audit Logs</h2>
+                  <p className="text-gray-400 text-sm">Complete history of all security-related actions</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="max-h-[600px] overflow-y-auto">
+              {auditLogs.length === 0 ? (
+                <p className="p-8 text-center text-gray-400">No audit logs yet</p>
+              ) : (
+                <table className="w-full">
+                  <thead className="bg-gray-700/50 sticky top-0">
+                    <tr>
+                      <th className="text-left px-6 py-3 text-sm font-medium text-gray-300">Action</th>
+                      <th className="text-left px-6 py-3 text-sm font-medium text-gray-300">Category</th>
+                      <th className="text-left px-6 py-3 text-sm font-medium text-gray-300">User</th>
+                      <th className="text-left px-6 py-3 text-sm font-medium text-gray-300">Target</th>
+                      <th className="text-left px-6 py-3 text-sm font-medium text-gray-300">Time</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-700">
+                    {auditLogs.map((log) => (
+                      <tr key={log.id} className="hover:bg-gray-700/30">
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            log.action.includes('failed') ? 'bg-red-500/20 text-red-400' :
+                            log.action.includes('success') || log.action.includes('approved') || log.action.includes('completed') ? 'bg-green-500/20 text-green-400' :
+                            log.action.includes('initiated') || log.action.includes('sent') ? 'bg-blue-500/20 text-blue-400' :
+                            'bg-gray-500/20 text-gray-400'
+                          }`}>
+                            {log.action.replace(/_/g, ' ')}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            log.category === 'security' ? 'bg-red-500/20 text-red-400' :
+                            log.category === 'auth' ? 'bg-blue-500/20 text-blue-400' :
+                            log.category === 'admin' ? 'bg-purple-500/20 text-purple-400' :
+                            'bg-gray-500/20 text-gray-400'
+                          }`}>
+                            {log.category}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-gray-300 text-sm">
+                          {log.user_name || log.user_email || '-'}
+                        </td>
+                        <td className="px-6 py-4 text-gray-300 text-sm">
+                          {log.target_name || log.target_email || '-'}
+                        </td>
+                        <td className="px-6 py-4 text-gray-400 text-sm">
+                          {formatDate(log.created_at)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Reject Modal */}
@@ -457,6 +949,203 @@ const AdminDashboard = () => {
                 className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
               >
                 {actionLoading ? 'Rejecting...' : 'Reject'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Transfer Modal */}
+      {transferModal.show && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md mx-4 border border-gray-700">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 bg-red-500/20 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white">Transfer Admin Role</h3>
+                <p className="text-gray-400 text-sm">This action cannot be undone easily</p>
+              </div>
+            </div>
+
+            {transferError && (
+              <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+                <p className="text-red-400 text-sm">{transferError}</p>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Select New Admin
+                </label>
+                <select
+                  value={transferData.targetUserId}
+                  onChange={(e) => setTransferData({ ...transferData, targetUserId: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                >
+                  <option value="">Choose a user...</option>
+                  {approvedUsers.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.full_name} ({u.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Your Password (Re-authenticate)
+                </label>
+                <input
+                  type="password"
+                  value={transferData.password}
+                  onChange={(e) => setTransferData({ ...transferData, password: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  placeholder="Enter your password"
+                />
+              </div>
+            </div>
+
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 mt-4">
+              <p className="text-yellow-400 text-sm">
+                <strong>Warning:</strong> Both you and the new admin must confirm via email. 
+                The transfer will complete after 48 hours.
+              </p>
+            </div>
+
+            <div className="flex gap-3 justify-end mt-6">
+              <button
+                onClick={() => {
+                  setTransferModal({ show: false });
+                  setTransferData({ targetUserId: '', password: '' });
+                  setTransferError('');
+                }}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleTransferSubmit}
+                disabled={transferLoading}
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+              >
+                {transferLoading ? 'Processing...' : 'Initiate Transfer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete User Modal */}
+      {deleteModal.show && deleteModal.user && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md mx-4 border border-gray-700">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 bg-red-500/20 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white">Delete User</h3>
+                <p className="text-gray-400 text-sm">{deleteModal.user.full_name}</p>
+              </div>
+            </div>
+
+            {deleteError && (
+              <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+                <p className="text-red-400 text-sm">{deleteError}</p>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Type <span className="text-red-400 font-bold">DELETE</span> to confirm
+                </label>
+                <input
+                  type="text"
+                  value={deleteData.confirmText}
+                  onChange={(e) => setDeleteData({ ...deleteData, confirmText: e.target.value })}
+                  className={`w-full px-4 py-3 bg-gray-700 border rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-red-500 focus:border-transparent ${
+                    deleteData.confirmText === 'DELETE' ? 'border-green-500' : 'border-gray-600'
+                  }`}
+                  placeholder="Type DELETE"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Enter your admin email ({user?.email})
+                </label>
+                <input
+                  type="email"
+                  value={deleteData.confirmEmail}
+                  onChange={(e) => setDeleteData({ ...deleteData, confirmEmail: e.target.value })}
+                  className={`w-full px-4 py-3 bg-gray-700 border rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-red-500 focus:border-transparent ${
+                    deleteData.confirmEmail === user?.email ? 'border-green-500' : 'border-gray-600'
+                  }`}
+                  placeholder="Your admin email"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Your Password
+                </label>
+                <input
+                  type="password"
+                  value={deleteData.password}
+                  onChange={(e) => setDeleteData({ ...deleteData, password: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  placeholder="Enter your password"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Reason (optional)
+                </label>
+                <textarea
+                  value={deleteData.reason}
+                  onChange={(e) => setDeleteData({ ...deleteData, reason: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  rows={2}
+                  placeholder="Reason for deletion"
+                />
+              </div>
+            </div>
+
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 mt-4">
+              <p className="text-yellow-400 text-sm">
+                <strong>Note:</strong> The user will receive an email to verify this deletion.
+                <br />• User has <strong>30 minutes</strong> to respond
+                <br />• If ignored, deletion is <strong>automatically cancelled</strong>
+                <br />• Data preserved for 30 days after deletion
+              </p>
+            </div>
+
+            <div className="flex gap-3 justify-end mt-6">
+              <button
+                onClick={() => {
+                  setDeleteModal({ show: false, user: null });
+                  setDeleteData({ password: '', confirmText: '', confirmEmail: '', reason: '' });
+                  setDeleteError('');
+                }}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteSubmit}
+                disabled={deleteLoading || deleteData.confirmText !== 'DELETE' || deleteData.confirmEmail !== user?.email}
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deleteLoading ? 'Processing...' : 'Delete User'}
               </button>
             </div>
           </div>

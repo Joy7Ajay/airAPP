@@ -3,15 +3,12 @@ import { useNavigate } from 'react-router-dom';
 
 const Welcome = () => {
   const navigate = useNavigate();
-  const [isDark, setIsDark] = useState(() => {
-    const saved = localStorage.getItem('theme');
-    return saved ? saved === 'dark' : true; // Default to dark
-  });
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  // Save theme preference
-  useEffect(() => {
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
-  }, [isDark]);
+  // Get current hour and determine if it's night time
+  const currentHour = new Date().getHours();
+  const isNightTime = currentHour >= 18 || currentHour < 6; // 6 PM - 6 AM
+  const isDark = isNightTime; // UI theme follows time
 
   // Plane SVG component
   const Plane = ({ className, size = 40 }) => (
@@ -26,39 +23,61 @@ const Welcome = () => {
     </svg>
   );
 
-  // Background images for each mode
+  // Background images for time-based display
   const darkBgImage = '/images/welcome/485798569_1210287077193497_3667196745893921462_n.jpg';
   const lightBgImage = '/images/welcome/Passenger-terminal-outlook.jpg';
 
+  // Day images (6 AM - 6 PM)
+  const dayImages = [lightBgImage];
+  
+  // Night images (6 PM - 6 AM)
+  const nightImages = [darkBgImage];
+
+  // Select images based on time
+  const backgroundImages = isNightTime ? nightImages : dayImages;
+
+  // Change background image every 5 seconds (for when more images are added)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % backgroundImages.length);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [backgroundImages.length]);
+
   return (
     <div className={`min-h-screen flex flex-col overflow-hidden relative ${isDark ? 'theme-dark' : 'theme-light'}`}>
-      {/* Background Image */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center transition-opacity duration-700"
-        style={{
-          backgroundImage: `url(${isDark ? darkBgImage : lightBgImage})`,
-        }}
-      />
+      {/* Background Image Slideshow - Time Based */}
+      {backgroundImages.map((img, index) => (
+        <div
+          key={index}
+          className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
+          style={{
+            backgroundImage: `url(${img})`,
+            opacity: index === currentImageIndex ? 1 : 0,
+          }}
+        />
+      ))}
       {/* Overlay for readability */}
       <div className={`absolute inset-0 transition-colors duration-500 ${
         isDark 
           ? 'bg-slate-900/80' 
           : 'bg-white/55'
       }`} />
-      {/* Flying Planes Background */}
+      {/* Flying Planes Background - Uganda Flag Colors (Black, Yellow, Red) + Blue */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-10">
         {/* Planes flying left to right */}
-        <Plane className={`flying-plane plane-right plane-1 ${isDark ? 'text-blue-400/50' : 'text-orange-500/60'}`} size={40} />
-        <Plane className={`flying-plane plane-right plane-2 ${isDark ? 'text-indigo-400/35' : 'text-rose-500/50'}`} size={28} />
-        <Plane className={`flying-plane plane-right plane-3 ${isDark ? 'text-cyan-400/30' : 'text-amber-600/45'}`} size={22} />
-        <Plane className={`flying-plane plane-right plane-4 ${isDark ? 'text-blue-300/40' : 'text-red-500/50'}`} size={34} />
+        <Plane className={`flying-plane plane-right plane-1 ${isDark ? 'text-blue-400/50' : 'text-blue-600/60'}`} size={40} />
+        <Plane className={`flying-plane plane-right plane-2 ${isDark ? 'text-yellow-400/50' : 'text-yellow-500/70'}`} size={28} />
+        <Plane className={`flying-plane plane-right plane-3 ${isDark ? 'text-red-400/45' : 'text-red-600/60'}`} size={22} />
+        <Plane className={`flying-plane plane-right plane-4 ${isDark ? 'text-gray-300/40' : 'text-gray-800/50'}`} size={34} />
         {/* Planes flying right to left */}
-        <Plane className={`flying-plane plane-left plane-5 ${isDark ? 'text-purple-400/35' : 'text-teal-600/55'}`} size={32} />
-        <Plane className={`flying-plane plane-left plane-6 ${isDark ? 'text-blue-400/25' : 'text-orange-600/45'}`} size={26} />
-        <Plane className={`flying-plane plane-left plane-7 ${isDark ? 'text-indigo-300/30' : 'text-emerald-600/50'}`} size={24} />
+        <Plane className={`flying-plane plane-left plane-5 ${isDark ? 'text-yellow-300/45' : 'text-yellow-600/65'}`} size={32} />
+        <Plane className={`flying-plane plane-left plane-6 ${isDark ? 'text-blue-300/40' : 'text-blue-500/55'}`} size={26} />
+        <Plane className={`flying-plane plane-left plane-7 ${isDark ? 'text-red-300/40' : 'text-red-500/55'}`} size={24} />
         {/* Planes flying bottom to top */}
-        <Plane className={`flying-plane plane-up plane-8 ${isDark ? 'text-cyan-400/35' : 'text-sky-600/55'}`} size={30} />
-        <Plane className={`flying-plane plane-up plane-9 ${isDark ? 'text-purple-300/30' : 'text-violet-500/50'}`} size={28} />
+        <Plane className={`flying-plane plane-up plane-8 ${isDark ? 'text-gray-400/35' : 'text-gray-700/50'}`} size={30} />
+        <Plane className={`flying-plane plane-up plane-9 ${isDark ? 'text-blue-300/35' : 'text-blue-400/50'}`} size={28} />
       </div>
       {/* Header */}
       <header className="p-6 animate-slide-in-left relative z-20">
@@ -82,27 +101,6 @@ const Welcome = () => {
             <span className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>AirApp</span>
             <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full ml-2">Admin</span>
           </div>
-          
-          {/* Theme Toggle */}
-          <button
-            onClick={() => setIsDark(!isDark)}
-            className={`p-3 rounded-xl transition-all duration-300 ${
-              isDark 
-                ? 'bg-white/10 hover:bg-white/20 text-yellow-400' 
-                : 'bg-gray-800/10 hover:bg-gray-800/20 text-gray-700'
-            }`}
-            title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-          >
-            {isDark ? (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-            ) : (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-              </svg>
-            )}
-          </button>
         </div>
       </header>
 

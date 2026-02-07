@@ -210,47 +210,53 @@ body {
 }
 
 /* Animated Color-Changing Inner Shadow Input - Synced with gradient border */
+/* Uganda Flag Colors Animation - Black, Yellow, Red with smooth transitions */
 @keyframes insetShadowColor {
   0%, 100% {
-    box-shadow: inset 3px 3px 8px rgba(59, 130, 246, 0.5),
+    box-shadow: inset 3px 3px 8px rgba(55, 65, 81, 0.5),
                 inset -2px -2px 4px rgba(255, 255, 255, 0.8);
-    border-color: #3b82f6;
+    border-color: #374151; /* Black */
   }
-  14% {
-    box-shadow: inset 3px 3px 8px rgba(6, 182, 212, 0.5),
+  12% {
+    box-shadow: inset 3px 3px 8px rgba(74, 69, 32, 0.5),
                 inset -2px -2px 4px rgba(255, 255, 255, 0.8);
-    border-color: #06b6d4;
+    border-color: #4a4520; /* Dark Olive - transition */
   }
-  28% {
-    box-shadow: inset 3px 3px 8px rgba(16, 185, 129, 0.5),
+  25% {
+    box-shadow: inset 3px 3px 8px rgba(202, 138, 4, 0.5),
                 inset -2px -2px 4px rgba(255, 255, 255, 0.8);
-    border-color: #10b981;
+    border-color: #ca8a04; /* Golden - approaching yellow */
   }
-  42% {
+  37% {
     box-shadow: inset 3px 3px 8px rgba(234, 179, 8, 0.5),
                 inset -2px -2px 4px rgba(255, 255, 255, 0.8);
-    border-color: #eab308;
+    border-color: #eab308; /* Yellow - Africa's sunshine */
   }
-  56% {
-    box-shadow: inset 3px 3px 8px rgba(245, 158, 11, 0.5),
+  50% {
+    box-shadow: inset 3px 3px 8px rgba(234, 88, 12, 0.5),
                 inset -2px -2px 4px rgba(255, 255, 255, 0.8);
-    border-color: #f59e0b;
+    border-color: #ea580c; /* Orange - transition */
   }
-  70% {
-    box-shadow: inset 3px 3px 8px rgba(244, 63, 94, 0.5),
+  62% {
+    box-shadow: inset 3px 3px 8px rgba(220, 38, 38, 0.5),
                 inset -2px -2px 4px rgba(255, 255, 255, 0.8);
-    border-color: #f43f5e;
+    border-color: #dc2626; /* Red - African brotherhood */
   }
-  84% {
-    box-shadow: inset 3px 3px 8px rgba(139, 92, 246, 0.5),
+  75% {
+    box-shadow: inset 3px 3px 8px rgba(185, 28, 28, 0.5),
                 inset -2px -2px 4px rgba(255, 255, 255, 0.8);
-    border-color: #8b5cf6;
+    border-color: #b91c1c; /* Deep Red */
+  }
+  87% {
+    box-shadow: inset 3px 3px 8px rgba(92, 26, 26, 0.5),
+                inset -2px -2px 4px rgba(255, 255, 255, 0.8);
+    border-color: #5c1a1a; /* Dark Maroon - transition */
   }
 }
 
 .glow-input {
-  border: 2px solid #3b82f6;
-  box-shadow: inset 3px 3px 8px rgba(59, 130, 246, 0.5),
+  border: 2px solid #374151;
+  box-shadow: inset 3px 3px 8px rgba(55, 65, 81, 0.5),
               inset -2px -2px 4px rgba(255, 255, 255, 0.8);
   background: linear-gradient(145deg, #f8fafc, #ffffff);
   animation: insetShadowColor 10s linear infinite;
@@ -285,34 +291,39 @@ body {
   opacity: 1;
 }
 
+/* Uganda Flag Colors Outer Glow - matches insetShadowColor */
 @keyframes outerGlowColor {
   0%, 100% {
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3),
-                0 0 20px rgba(59, 130, 246, 0.4);
+    box-shadow: 0 0 0 3px rgba(55, 65, 81, 0.3),
+                0 0 20px rgba(55, 65, 81, 0.4); /* Black */
   }
-  14% {
-    box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.3),
-                0 0 20px rgba(6, 182, 212, 0.4);
+  12% {
+    box-shadow: 0 0 0 3px rgba(74, 69, 32, 0.3),
+                0 0 20px rgba(74, 69, 32, 0.4); /* Dark Olive */
   }
-  28% {
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3),
-                0 0 20px rgba(16, 185, 129, 0.4);
+  25% {
+    box-shadow: 0 0 0 3px rgba(202, 138, 4, 0.3),
+                0 0 20px rgba(202, 138, 4, 0.4); /* Golden */
   }
-  42% {
+  37% {
     box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.3),
-                0 0 20px rgba(234, 179, 8, 0.4);
+                0 0 20px rgba(234, 179, 8, 0.4); /* Yellow */
   }
-  56% {
-    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3),
-                0 0 20px rgba(245, 158, 11, 0.4);
+  50% {
+    box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.3),
+                0 0 20px rgba(234, 88, 12, 0.4); /* Orange */
   }
-  70% {
-    box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.3),
-                0 0 20px rgba(244, 63, 94, 0.4);
+  62% {
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.3),
+                0 0 20px rgba(220, 38, 38, 0.4); /* Red */
   }
-  84% {
-    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.3),
-                0 0 20px rgba(139, 92, 246, 0.4);
+  75% {
+    box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.3),
+                0 0 20px rgba(185, 28, 28, 0.4); /* Deep Red */
+  }
+  87% {
+    box-shadow: 0 0 0 3px rgba(92, 26, 26, 0.3),
+                0 0 20px rgba(92, 26, 26, 0.4); /* Dark Maroon */
   }
 }
 
