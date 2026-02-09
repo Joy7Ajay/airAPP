@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 
 const Data = () => {
@@ -6,6 +6,8 @@ const Data = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedTimeRange, setSelectedTimeRange] = useState('3M');
+  const bubbleContainerRef = useRef(null);
 
   // Storage stats
   const [storage, setStorage] = useState({
@@ -14,6 +16,54 @@ const Data = () => {
     growth: 15.2,
     activeQueries: 1234,
   });
+
+  // Bubble chart data - Data categories with sizes
+  const bubbleData = {
+    '1W': [
+      { name: 'Flight Records', value: 12450, size: 85, x: 50, y: 45 },
+      { name: 'Passengers', value: 8320, size: 65, x: 25, y: 35 },
+      { name: 'Airlines', value: 4680, size: 50, x: 75, y: 30 },
+      { name: 'Routes', value: 3240, size: 45, x: 30, y: 70 },
+      { name: 'Airports', value: 2890, size: 40, x: 70, y: 65 },
+    ],
+    '1M': [
+      { name: 'Flight Records', value: 54820, size: 90, x: 50, y: 45 },
+      { name: 'Passengers', value: 38540, size: 70, x: 25, y: 35 },
+      { name: 'Airlines', value: 18920, size: 55, x: 75, y: 28 },
+      { name: 'Routes', value: 14560, size: 48, x: 28, y: 72 },
+      { name: 'Airports', value: 11230, size: 42, x: 72, y: 68 },
+    ],
+    '3M': [
+      { name: 'Flight Records', value: 168420, size: 100, x: 50, y: 45 },
+      { name: 'Passengers', value: 124680, size: 78, x: 22, y: 32 },
+      { name: 'Airlines', value: 56890, size: 60, x: 78, y: 25 },
+      { name: 'Routes', value: 42350, size: 52, x: 25, y: 75 },
+      { name: 'Airports', value: 31240, size: 45, x: 75, y: 70 },
+    ],
+    '1Y': [
+      { name: 'Flight Records', value: 684520, size: 110, x: 50, y: 45 },
+      { name: 'Passengers', value: 512340, size: 85, x: 20, y: 30 },
+      { name: 'Airlines', value: 234560, size: 68, x: 80, y: 22 },
+      { name: 'Routes', value: 178940, size: 58, x: 22, y: 78 },
+      { name: 'Airports', value: 124680, size: 50, x: 78, y: 72 },
+    ],
+    'ALL': [
+      { name: 'Flight Records', value: 2458920, size: 120, x: 50, y: 45 },
+      { name: 'Passengers', value: 1845230, size: 95, x: 18, y: 28 },
+      { name: 'Airlines', value: 856420, size: 75, x: 82, y: 20 },
+      { name: 'Routes', value: 624580, size: 62, x: 20, y: 80 },
+      { name: 'Airports', value: 456890, size: 55, x: 80, y: 75 },
+    ],
+  };
+
+  // Bottom stats for bubble chart
+  const bubbleStats = {
+    '1W': { records: 31580, queries: 12450, syncs: 86 },
+    '1M': { records: 138070, queries: 54820, syncs: 324 },
+    '3M': { records: 423580, queries: 168420, syncs: 892 },
+    '1Y': { records: 1735040, queries: 684520, syncs: 3456 },
+    'ALL': { records: 6242040, queries: 2458920, syncs: 12840 },
+  };
 
   // Database overview
   const [databases, setDatabases] = useState([
@@ -260,6 +310,152 @@ const Data = () => {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Bubble Chart - Data Distribution */}
+      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 rounded-2xl p-6 border border-slate-800 overflow-hidden">
+        {/* Time Range Selector */}
+        <div className="flex flex-col items-center mb-6">
+          <span className="text-slate-500 text-xs tracking-[0.3em] uppercase mb-4">Time Range</span>
+          <div className="flex items-center gap-2 bg-slate-800/50 rounded-xl p-1">
+            {['1W', '1M', '3M', '1Y', 'ALL'].map((range) => (
+              <button
+                key={range}
+                onClick={() => setSelectedTimeRange(range)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  selectedTimeRange === range
+                    ? 'bg-slate-700 text-white shadow-lg'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {range}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Bubble Chart Container */}
+        <div 
+          ref={bubbleContainerRef}
+          className="relative h-[400px] w-full"
+          style={{
+            background: 'radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 50%)',
+          }}
+        >
+          {/* Orbital rings */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-[300px] h-[300px] border border-slate-700/30 rounded-full" />
+            <div className="absolute w-[200px] h-[200px] border border-slate-700/20 rounded-full" />
+          </div>
+
+          {/* Floating decorative bubbles */}
+          <div className="absolute w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 opacity-60 blur-sm" style={{ top: '10%', left: '5%' }} />
+          <div className="absolute w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 opacity-40 blur-sm" style={{ top: '75%', left: '8%' }} />
+          <div className="absolute w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 opacity-50 blur-sm" style={{ top: '5%', right: '8%' }} />
+          <div className="absolute w-5 h-5 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 opacity-40 blur-sm" style={{ top: '80%', right: '5%' }} />
+          
+          {/* Small red accent dots */}
+          <div className="absolute w-2 h-2 rounded-full bg-red-500" style={{ top: '25%', left: '18%' }} />
+          <div className="absolute w-2 h-2 rounded-full bg-red-500" style={{ top: '60%', left: '12%' }} />
+          <div className="absolute w-2 h-2 rounded-full bg-red-500" style={{ top: '35%', right: '15%' }} />
+
+          {/* Main Data Bubbles */}
+          {bubbleData[selectedTimeRange].map((bubble, index) => (
+            <div
+              key={bubble.name}
+              className="absolute transform -translate-x-1/2 -translate-y-1/2 transition-all duration-700 ease-out cursor-pointer group"
+              style={{
+                left: `${bubble.x}%`,
+                top: `${bubble.y}%`,
+                width: `${bubble.size}px`,
+                height: `${bubble.size}px`,
+              }}
+            >
+              {/* Bubble glow */}
+              <div 
+                className="absolute inset-0 rounded-full opacity-50 blur-md transition-opacity group-hover:opacity-70"
+                style={{
+                  background: 'radial-gradient(circle at 30% 30%, rgba(239, 68, 68, 0.8), rgba(99, 102, 241, 0.6))',
+                }}
+              />
+              
+              {/* Bubble body */}
+              <div 
+                className="absolute inset-0 rounded-full transition-transform group-hover:scale-110"
+                style={{
+                  background: 'radial-gradient(circle at 35% 35%, rgba(239, 68, 68, 0.9), rgba(147, 51, 234, 0.7) 50%, rgba(79, 70, 229, 0.8))',
+                  boxShadow: 'inset -5px -5px 20px rgba(0,0,0,0.3), inset 5px 5px 20px rgba(255,255,255,0.1)',
+                }}
+              />
+              
+              {/* Bubble highlight */}
+              <div 
+                className="absolute rounded-full bg-white/20"
+                style={{
+                  width: '30%',
+                  height: '30%',
+                  top: '15%',
+                  left: '20%',
+                  filter: 'blur(2px)',
+                }}
+              />
+              
+              {/* Bubble content */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-2">
+                <span className="text-white/90 text-xs font-medium leading-tight">{bubble.name}</span>
+                <span className="text-white font-bold text-sm mt-0.5">
+                  {bubble.value >= 1000000 
+                    ? `${(bubble.value / 1000000).toFixed(1)}M`
+                    : bubble.value >= 1000 
+                    ? `${(bubble.value / 1000).toFixed(0)}K`
+                    : bubble.value}
+                </span>
+                <span className="text-white/60 text-[10px]">records</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Bottom Stats */}
+        <div className="grid grid-cols-3 gap-6 mt-6 pt-6 border-t border-slate-800">
+          <div className="text-center">
+            <div className="w-10 h-10 mx-auto mb-2 rounded-xl border border-slate-700 flex items-center justify-center">
+              <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <span className="text-slate-500 text-xs tracking-wider uppercase">Total Records</span>
+            <p className="text-white text-2xl font-bold mt-1">
+              {bubbleStats[selectedTimeRange].records >= 1000000 
+                ? `${(bubbleStats[selectedTimeRange].records / 1000000).toFixed(1)}M`
+                : bubbleStats[selectedTimeRange].records.toLocaleString()}
+            </p>
+          </div>
+          <div className="text-center">
+            <div className="w-10 h-10 mx-auto mb-2 rounded-xl border border-slate-700 flex items-center justify-center">
+              <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <span className="text-slate-500 text-xs tracking-wider uppercase">Active Queries</span>
+            <p className="text-white text-2xl font-bold mt-1">
+              {bubbleStats[selectedTimeRange].queries >= 1000000 
+                ? `${(bubbleStats[selectedTimeRange].queries / 1000000).toFixed(1)}M`
+                : bubbleStats[selectedTimeRange].queries.toLocaleString()}
+            </p>
+          </div>
+          <div className="text-center">
+            <div className="w-10 h-10 mx-auto mb-2 rounded-xl border border-slate-700 flex items-center justify-center">
+              <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <span className="text-slate-500 text-xs tracking-wider uppercase">Data Syncs</span>
+            <p className="text-white text-2xl font-bold mt-1">
+              {bubbleStats[selectedTimeRange].syncs.toLocaleString()}
+            </p>
           </div>
         </div>
       </div>

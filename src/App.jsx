@@ -10,6 +10,7 @@ import Overview from './pages/admin/Overview';
 import Analytics from './pages/admin/Analytics';
 import AIInsights from './pages/admin/AIInsights';
 import Predictions from './pages/admin/Predictions';
+import Airports from './pages/admin/Airports';
 import Users from './pages/admin/Users';
 import Data from './pages/admin/Data';
 import Security from './pages/admin/Security';
@@ -31,6 +32,7 @@ function App() {
           <Route path="analytics" element={<Analytics />} />
           <Route path="ai-insights" element={<AIInsights />} />
           <Route path="predictions" element={<Predictions />} />
+          <Route path="airports" element={<Airports />} />
           <Route path="users" element={<Users />} />
           <Route path="data" element={<Data />} />
           <Route path="security" element={<Security />} />

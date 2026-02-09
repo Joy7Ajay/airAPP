@@ -6,6 +6,7 @@ const API_URL = 'http://localhost:5000/api';
 const Users = () => {
   const { user, token } = useOutletContext();
   const [isLoading, setIsLoading] = useState(true);
+  const [mainTab, setMainTab] = useState('users'); // 'users' or 'permissions'
   const [activeTab, setActiveTab] = useState('pending');
   const [requests, setRequests] = useState([]);
   const [stats, setStats] = useState({ pending: 0, approved: 0, rejected: 0, total: 0 });
@@ -13,6 +14,146 @@ const Users = () => {
   const [rejectModal, setRejectModal] = useState({ show: false, userId: null, userName: '' });
   const [rejectReason, setRejectReason] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [permissionsSearch, setPermissionsSearch] = useState('');
+
+  // Permission features/columns
+  const permissionFeatures = [
+    { id: 'overview', name: 'Overview', icon: '📊', description: 'View dashboard' },
+    { id: 'analytics', name: 'Analytics', icon: '📈', description: 'Travel analytics' },
+    { id: 'ai_insights', name: 'AI Insights', icon: '🤖', description: 'AI predictions' },
+    { id: 'predictions', name: 'Forecasts', icon: '🔮', description: 'Forecasting' },
+    { id: 'data_view', name: 'Data View', icon: '👁️', description: 'View data' },
+    { id: 'data_import', name: 'Import', icon: '📥', description: 'Import data' },
+    { id: 'data_export', name: 'Export', icon: '📤', description: 'Export data' },
+    { id: 'users', name: 'Users', icon: '👥', description: 'User management' },
+    { id: 'security', name: 'Security', icon: '🔒', description: 'Security settings' },
+    { id: 'audit', name: 'Audit Logs', icon: '📋', description: 'View logs' },
+  ];
+
+  // Mock users with permissions (in real app, this would come from API)
+  const [userPermissions, setUserPermissions] = useState([
+    { 
+      id: 1, 
+      name: 'System Administrator', 
+      email: 'ljoy23200@gmail.com', 
+      role: 'admin',
+      status: 'online',
+      permissions: {
+        overview: true, analytics: true, ai_insights: true, predictions: true,
+        data_view: true, data_import: true, data_export: true,
+        users: true, security: true, audit: true
+      }
+    },
+    { 
+      id: 2, 
+      name: 'Sarah Nakamya', 
+      email: 'sarah.n@airapp.ug', 
+      role: 'analyst',
+      status: 'online',
+      permissions: {
+        overview: true, analytics: true, ai_insights: true, predictions: true,
+        data_view: true, data_import: false, data_export: true,
+        users: false, security: false, audit: false
+      }
+    },
+    { 
+      id: 3, 
+      name: 'John Mukasa', 
+      email: 'j.mukasa@airapp.ug', 
+      role: 'viewer',
+      status: 'offline',
+      permissions: {
+        overview: true, analytics: true, ai_insights: false, predictions: false,
+        data_view: true, data_import: false, data_export: false,
+        users: false, security: false, audit: false
+      }
+    },
+    { 
+      id: 4, 
+      name: 'Grace Atim', 
+      email: 'grace.a@airapp.ug', 
+      role: 'manager',
+      status: 'online',
+      permissions: {
+        overview: true, analytics: true, ai_insights: true, predictions: true,
+        data_view: true, data_import: true, data_export: true,
+        users: true, security: false, audit: true
+      }
+    },
+    { 
+      id: 5, 
+      name: 'David Opio', 
+      email: 'd.opio@airapp.ug', 
+      role: 'analyst',
+      status: 'offline',
+      permissions: {
+        overview: true, analytics: true, ai_insights: true, predictions: false,
+        data_view: true, data_import: false, data_export: true,
+        users: false, security: false, audit: false
+      }
+    },
+    { 
+      id: 6, 
+      name: 'Faith Nambi', 
+      email: 'f.nambi@airapp.ug', 
+      role: 'viewer',
+      status: 'online',
+      permissions: {
+        overview: true, analytics: false, ai_insights: false, predictions: false,
+        data_view: true, data_import: false, data_export: false,
+        users: false, security: false, audit: false
+      }
+    },
+  ]);
+
+  // Toggle permission
+  const togglePermission = (userId, featureId) => {
+    setUserPermissions(prev => prev.map(u => {
+      if (u.id === userId) {
+        return {
+          ...u,
+          permissions: {
+            ...u.permissions,
+            [featureId]: !u.permissions[featureId]
+          }
+        };
+      }
+      return u;
+    }));
+  };
+
+  // Toggle all permissions for a user
+  const toggleAllForUser = (userId) => {
+    setUserPermissions(prev => prev.map(u => {
+      if (u.id === userId) {
+        const allEnabled = Object.values(u.permissions).every(v => v);
+        const newPermissions = {};
+        Object.keys(u.permissions).forEach(key => {
+          newPermissions[key] = !allEnabled;
+        });
+        return { ...u, permissions: newPermissions };
+      }
+      return u;
+    }));
+  };
+
+  // Toggle all permissions for a feature
+  const toggleAllForFeature = (featureId) => {
+    const allEnabled = userPermissions.every(u => u.permissions[featureId]);
+    setUserPermissions(prev => prev.map(u => ({
+      ...u,
+      permissions: {
+        ...u.permissions,
+        [featureId]: !allEnabled
+      }
+    })));
+  };
+
+  // Filter users by search
+  const filteredPermissionUsers = userPermissions.filter(u =>
+    u.name.toLowerCase().includes(permissionsSearch.toLowerCase()) ||
+    u.email.toLowerCase().includes(permissionsSearch.toLowerCase())
+  );
 
   // Fetch data
   useEffect(() => {
@@ -133,8 +274,41 @@ const Users = () => {
           </h1>
           <p className="text-slate-400 mt-1">Track activity, manage roles, and analyze user engagement.</p>
         </div>
+        
+        {/* Main Tab Switcher */}
+        <div className="flex items-center gap-2 bg-slate-800/50 rounded-xl p-1">
+          <button
+            onClick={() => setMainTab('users')}
+            className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${
+              mainTab === 'users'
+                ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Users
+          </button>
+          <button
+            onClick={() => setMainTab('permissions')}
+            className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${
+              mainTab === 'permissions'
+                ? 'bg-gradient-to-r from-cyan-500 to-teal-600 text-white shadow-lg'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            Permissions
+          </button>
+        </div>
       </div>
 
+      {/* Users Tab Content */}
+      {mainTab === 'users' && (
+        <>
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800">
@@ -426,6 +600,296 @@ const Users = () => {
             </div>
           </div>
         </div>
+      )}
+        </>
+      )}
+
+      {/* Permissions Tab Content */}
+      {mainTab === 'permissions' && (
+        <>
+          {/* Permissions Header */}
+          <div className="bg-slate-900/50 rounded-2xl p-6 border border-slate-800">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-white">Access Control Matrix</h2>
+                <p className="text-slate-400 text-sm mt-1">Manage what each user can access on the platform</p>
+              </div>
+              <div className="flex items-center gap-3">
+                {/* Search */}
+                <div className="relative">
+                  <svg className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    type="text"
+                    placeholder="Search users..."
+                    value={permissionsSearch}
+                    onChange={(e) => setPermissionsSearch(e.target.value)}
+                    className="pl-9 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 w-64"
+                  />
+                </div>
+                <button className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-medium transition-colors flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Refresh
+                </button>
+              </div>
+            </div>
+
+            {/* Legend */}
+            <div className="flex items-center gap-6 py-3 px-4 bg-slate-800/50 rounded-xl">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 bg-emerald-500/20 rounded flex items-center justify-center">
+                  <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <span className="text-sm text-slate-400">Access Granted</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 bg-red-500/20 rounded flex items-center justify-center">
+                  <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <span className="text-sm text-slate-400">Access Denied</span>
+              </div>
+              <div className="flex items-center gap-2 ml-auto">
+                <span className="text-xs text-slate-500">Click cells to toggle permissions</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Permissions Matrix Table */}
+          <div className="bg-slate-900/50 rounded-2xl border border-slate-800 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-slate-800/80">
+                    {/* User Column Header */}
+                    <th className="sticky left-0 z-10 bg-slate-800 px-4 py-4 text-left min-w-[250px]">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-slate-700 rounded-lg flex items-center justify-center">
+                          <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                        <span className="text-sm font-medium text-slate-300">User / Feature</span>
+                      </div>
+                    </th>
+                    
+                    {/* Toggle All Column */}
+                    <th className="px-3 py-4 text-center min-w-[70px]">
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="w-8 h-8 bg-slate-700 rounded-lg flex items-center justify-center">
+                          <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                        </div>
+                        <span className="text-[10px] text-slate-500 uppercase tracking-wider">Toggle</span>
+                      </div>
+                    </th>
+
+                    {/* Feature Column Headers */}
+                    {permissionFeatures.map((feature) => (
+                      <th key={feature.id} className="px-3 py-4 text-center min-w-[90px]">
+                        <button
+                          onClick={() => toggleAllForFeature(feature.id)}
+                          className="flex flex-col items-center gap-1 group w-full"
+                          title={`Toggle all: ${feature.name}`}
+                        >
+                          <div className="w-8 h-8 bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg flex items-center justify-center group-hover:from-cyan-600 group-hover:to-cyan-700 transition-colors">
+                            <span className="text-base">{feature.icon}</span>
+                          </div>
+                          <span className="text-[10px] text-slate-400 uppercase tracking-wider group-hover:text-white transition-colors">
+                            {feature.name}
+                          </span>
+                        </button>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y divide-slate-800/50">
+                  {filteredPermissionUsers.map((permUser) => (
+                    <tr 
+                      key={permUser.id} 
+                      className={`hover:bg-slate-800/30 transition-colors ${
+                        permUser.role === 'admin' ? 'bg-purple-500/5' : ''
+                      }`}
+                    >
+                      {/* User Info Cell */}
+                      <td className="sticky left-0 z-10 bg-slate-900/95 px-4 py-3 border-r border-slate-800">
+                        <div className="flex items-center gap-3">
+                          {/* Status indicator */}
+                          <div className={`w-2 h-2 rounded-full ${
+                            permUser.status === 'online' ? 'bg-emerald-400' : 'bg-slate-600'
+                          }`} />
+                          
+                          {/* Avatar */}
+                          <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center">
+                            <span className="text-white font-semibold text-xs">
+                              {permUser.name.split(' ').map(n => n[0]).join('')}
+                            </span>
+                          </div>
+                          
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-white">{permUser.name}</span>
+                              {permUser.role === 'admin' && (
+                                <span className="px-1.5 py-0.5 bg-purple-500/20 text-purple-400 text-[10px] rounded font-medium uppercase">
+                                  Admin
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-xs text-slate-500">{permUser.status === 'online' ? 'Online' : 'Offline'}</span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Toggle All for User */}
+                      <td className="px-3 py-3 text-center border-r border-slate-800/50">
+                        <button
+                          onClick={() => toggleAllForUser(permUser.id)}
+                          className="w-8 h-8 mx-auto bg-slate-800 hover:bg-cyan-600 rounded-lg flex items-center justify-center transition-colors group"
+                          title="Toggle all permissions"
+                        >
+                          <svg className="w-4 h-4 text-slate-400 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                          </svg>
+                        </button>
+                      </td>
+
+                      {/* Permission Cells */}
+                      {permissionFeatures.map((feature) => {
+                        const hasPermission = permUser.permissions[feature.id];
+                        const isAdmin = permUser.role === 'admin';
+                        
+                        return (
+                          <td key={feature.id} className="px-3 py-3 text-center">
+                            <button
+                              onClick={() => !isAdmin && togglePermission(permUser.id, feature.id)}
+                              disabled={isAdmin}
+                              className={`w-10 h-10 mx-auto rounded-lg flex items-center justify-center transition-all ${
+                                hasPermission
+                                  ? 'bg-emerald-500/20 hover:bg-emerald-500/30'
+                                  : 'bg-red-500/10 hover:bg-red-500/20'
+                              } ${isAdmin ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                              title={hasPermission ? 'Access Granted' : 'Access Denied'}
+                            >
+                              {hasPermission ? (
+                                <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              ) : (
+                                <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                              )}
+                            </button>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Role Templates */}
+          <div className="bg-slate-900/50 rounded-2xl p-6 border border-slate-800">
+            <h3 className="text-lg font-semibold text-white mb-4">Role Templates</h3>
+            <p className="text-slate-400 text-sm mb-4">Quickly apply predefined permission sets to users</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Admin Template */}
+              <div className="bg-slate-800/50 rounded-xl p-4 border border-purple-500/30 hover:border-purple-500/50 transition-colors cursor-pointer">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                    <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <span className="text-white font-medium">Administrator</span>
+                    <p className="text-xs text-slate-500">Full access to all features</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {permissionFeatures.slice(0, 5).map(f => (
+                    <span key={f.id} className="text-[10px] px-2 py-0.5 bg-purple-500/20 text-purple-300 rounded">
+                      {f.name}
+                    </span>
+                  ))}
+                  <span className="text-[10px] px-2 py-0.5 bg-purple-500/20 text-purple-300 rounded">+5 more</span>
+                </div>
+              </div>
+
+              {/* Manager Template */}
+              <div className="bg-slate-800/50 rounded-xl p-4 border border-blue-500/30 hover:border-blue-500/50 transition-colors cursor-pointer">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                    <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                  </div>
+                  <div>
+                    <span className="text-white font-medium">Manager</span>
+                    <p className="text-xs text-slate-500">Data & user management</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  <span className="text-[10px] px-2 py-0.5 bg-blue-500/20 text-blue-300 rounded">Overview</span>
+                  <span className="text-[10px] px-2 py-0.5 bg-blue-500/20 text-blue-300 rounded">Analytics</span>
+                  <span className="text-[10px] px-2 py-0.5 bg-blue-500/20 text-blue-300 rounded">Data</span>
+                  <span className="text-[10px] px-2 py-0.5 bg-blue-500/20 text-blue-300 rounded">Users</span>
+                </div>
+              </div>
+
+              {/* Analyst Template */}
+              <div className="bg-slate-800/50 rounded-xl p-4 border border-cyan-500/30 hover:border-cyan-500/50 transition-colors cursor-pointer">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-cyan-500/20 rounded-lg flex items-center justify-center">
+                    <svg className="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <span className="text-white font-medium">Analyst</span>
+                    <p className="text-xs text-slate-500">Analytics & insights access</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  <span className="text-[10px] px-2 py-0.5 bg-cyan-500/20 text-cyan-300 rounded">Overview</span>
+                  <span className="text-[10px] px-2 py-0.5 bg-cyan-500/20 text-cyan-300 rounded">Analytics</span>
+                  <span className="text-[10px] px-2 py-0.5 bg-cyan-500/20 text-cyan-300 rounded">AI Insights</span>
+                </div>
+              </div>
+
+              {/* Viewer Template */}
+              <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-600/30 hover:border-slate-500/50 transition-colors cursor-pointer">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-slate-600/20 rounded-lg flex items-center justify-center">
+                    <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <span className="text-white font-medium">Viewer</span>
+                    <p className="text-xs text-slate-500">Read-only access</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  <span className="text-[10px] px-2 py-0.5 bg-slate-600/20 text-slate-400 rounded">Overview</span>
+                  <span className="text-[10px] px-2 py-0.5 bg-slate-600/20 text-slate-400 rounded">Data View</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
