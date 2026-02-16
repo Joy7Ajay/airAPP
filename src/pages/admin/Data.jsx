@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 
+const API_URL = 'http://localhost:5000/api';
+
 const Data = () => {
   const { user, token } = useOutletContext();
   const [isLoading, setIsLoading] = useState(true);
@@ -8,6 +10,7 @@ const Data = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [selectedTimeRange, setSelectedTimeRange] = useState('3M');
   const bubbleContainerRef = useRef(null);
+  const [actionStatus, setActionStatus] = useState('');
 
   // Storage stats
   const [storage, setStorage] = useState({
@@ -18,7 +21,7 @@ const Data = () => {
   });
 
   // Bubble chart data - Data categories with sizes
-  const bubbleData = {
+  const [bubbleData, setBubbleData] = useState({
     '1W': [
       { name: 'Flight Records', value: 12450, size: 85, x: 50, y: 45 },
       { name: 'Passengers', value: 8320, size: 65, x: 25, y: 35 },
@@ -54,16 +57,16 @@ const Data = () => {
       { name: 'Routes', value: 624580, size: 62, x: 20, y: 80 },
       { name: 'Airports', value: 456890, size: 55, x: 80, y: 75 },
     ],
-  };
+  });
 
   // Bottom stats for bubble chart
-  const bubbleStats = {
+  const [bubbleStats, setBubbleStats] = useState({
     '1W': { records: 31580, queries: 12450, syncs: 86 },
     '1M': { records: 138070, queries: 54820, syncs: 324 },
     '3M': { records: 423580, queries: 168420, syncs: 892 },
     '1Y': { records: 1735040, queries: 684520, syncs: 3456 },
     'ALL': { records: 6242040, queries: 2458920, syncs: 12840 },
-  };
+  });
 
   // Database overview
   const [databases, setDatabases] = useState([
@@ -81,30 +84,47 @@ const Data = () => {
   ]);
 
   // Storage usage trend
-  const usageTrend = [
+  const [usageTrend, setUsageTrend] = useState([
     { month: 'Aug', value: 245 },
     { month: 'Sep', value: 268 },
     { month: 'Oct', value: 285 },
     { month: 'Nov', value: 298 },
     { month: 'Dec', value: 312 },
     { month: 'Jan', value: 312.4 },
-  ];
+  ]);
 
   // Data transfer metrics
-  const transferMetrics = [
+  const [transferMetrics, setTransferMetrics] = useState([
     { type: 'Inbound', value: 24.5, unit: 'GB/day', trend: 'up' },
     { type: 'Outbound', value: 18.2, unit: 'GB/day', trend: 'up' },
     { type: 'API Calls', value: '2.4M', unit: '/day', trend: 'up' },
-  ];
+  ]);
 
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 600));
-      setIsLoading(false);
+      try {
+        const res = await fetch(`${API_URL}/dashboard/data`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setStorage(data.storage || storage);
+          setBubbleData(data.bubbleData || bubbleData);
+          setBubbleStats(data.bubbleStats || bubbleStats);
+          setDatabases(data.databases || databases);
+          setRecentImports(data.recentImports || recentImports);
+          setUsageTrend(data.usageTrend || usageTrend);
+          setTransferMetrics(data.transferMetrics || transferMetrics);
+        }
+      } catch (error) {
+        console.error('Error loading data management:', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
     loadData();
-  }, []);
+  }, [token]);
 
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
@@ -119,11 +139,98 @@ const Data = () => {
         if (prev >= 100) {
           clearInterval(interval);
           setIsUploading(false);
+          const sizeMb = `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+          fetch(`${API_URL}/actions/data/import`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ name: file.name, size: sizeMb }),
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.import) {
+                setRecentImports((prev) => [data.import, ...prev]);
+              }
+            })
+            .catch((error) => {
+              console.error('Import error:', error);
+            });
           return 100;
         }
         return prev + 10;
       });
     }, 300);
+  };
+
+  const downloadExport = async () => {
+    try {
+      const res = await fetch(`${API_URL}/actions/data/export`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'storage-usage.csv';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setActionStatus('Export complete.');
+    } catch (error) {
+      console.error('Export error:', error);
+      setActionStatus('Export failed.');
+    } finally {
+      setTimeout(() => setActionStatus(''), 2500);
+    }
+  };
+
+  const handleManage = async () => {
+    try {
+      const res = await fetch(`${API_URL}/actions/data/manage`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Manage failed');
+      window.alert(data.message || 'Data management action queued.');
+    } catch (error) {
+      console.error('Manage error:', error);
+      window.alert('Unable to start data management action.');
+    }
+  };
+
+  const handleViewDatabase = async (name) => {
+    try {
+      const res = await fetch(`${API_URL}/actions/data/databases/${encodeURIComponent(name)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Load failed');
+      window.alert(
+        `${data.database.name}\nType: ${data.database.type}\nStatus: ${data.database.status}\nLatency: ${data.database.latency}\nConnections: ${data.details.connections}\nReplicas: ${data.details.replicas}\nUptime: ${data.details.uptime}\nLast Backup: ${data.details.lastBackup}`
+      );
+    } catch (error) {
+      console.error('Database details error:', error);
+      window.alert('Unable to load database details.');
+    }
+  };
+
+  const handleViewAllImports = async () => {
+    try {
+      const res = await fetch(`${API_URL}/actions/data/imports`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Load failed');
+      window.alert(`Total recent imports: ${data.imports?.length || 0}`);
+    } catch (error) {
+      console.error('Imports error:', error);
+      window.alert('Unable to load import history.');
+    }
   };
 
   if (isLoading) {
@@ -151,6 +258,7 @@ const Data = () => {
             Data Management
           </h1>
           <p className="text-slate-400 mt-1">Structured data tools for accuracy, clarity, and seamless monitoring.</p>
+          {actionStatus && <p className="text-xs text-cyan-400 mt-2">{actionStatus}</p>}
         </div>
         <div className="flex items-center gap-3">
           <label className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-medium transition-colors cursor-pointer flex items-center gap-2">
@@ -160,7 +268,10 @@ const Data = () => {
             Import Data
             <input type="file" className="hidden" accept=".csv,.xlsx,.xls" onChange={handleFileUpload} />
           </label>
-          <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-medium transition-colors flex items-center gap-2">
+          <button
+            onClick={downloadExport}
+            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-medium transition-colors flex items-center gap-2"
+          >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
@@ -464,7 +575,7 @@ const Data = () => {
       <div className="bg-slate-900/50 rounded-2xl p-6 border border-slate-800">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-white">Data Base Overview</h2>
-          <button className="text-cyan-400 text-sm hover:text-cyan-300">Manage →</button>
+          <button onClick={handleManage} className="text-cyan-400 text-sm hover:text-cyan-300">Manage →</button>
         </div>
 
         <div className="overflow-x-auto">
@@ -514,7 +625,10 @@ const Data = () => {
                   </td>
                   <td className="py-4 text-slate-400">{db.latency}</td>
                   <td className="py-4">
-                    <button className="text-cyan-400 hover:text-cyan-300 text-sm">
+                    <button
+                      onClick={() => handleViewDatabase(db.name)}
+                      className="text-cyan-400 hover:text-cyan-300 text-sm"
+                    >
                       View Details
                     </button>
                   </td>
@@ -529,7 +643,7 @@ const Data = () => {
       <div className="bg-slate-900/50 rounded-2xl p-6 border border-slate-800">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-white">Recent Imports</h2>
-          <button className="text-cyan-400 text-sm hover:text-cyan-300">View All</button>
+          <button onClick={handleViewAllImports} className="text-cyan-400 text-sm hover:text-cyan-300">View All</button>
         </div>
 
         <div className="space-y-3">

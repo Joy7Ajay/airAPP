@@ -13,7 +13,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // Verify connection on startup
-transporter.verify((error, success) => {
+transporter.verify((error) => {
   if (error) {
     console.log('⚠️  Email service not configured:', error.message);
     console.log('   Set GMAIL_APP_PASSWORD in .env to enable email notifications');

@@ -14,6 +14,7 @@ import crypto from 'crypto';
 const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
+const isOtpBypassEnabled = () => String(process.env.ALLOW_OTP_BYPASS || '').trim().toLowerCase() === 'true';
 
 // Helper function to log audit events
 const logAudit = (action, category, userId, targetUserId, details, req) => {
@@ -175,31 +176,35 @@ router.post('/login', async (req, res) => {
     // Send OTP via email
     const emailSent = await sendLoginOTPEmail({ full_name: user.full_name, email: user.email }, otpCode);
 
-    // DEV MODE: If email fails, bypass OTP and log in directly
+    // Optional dev bypass. Keep disabled by default for production safety.
     if (!emailSent) {
-      console.log(`\n🔓 DEV MODE: OTP bypass for ${user.email}`);
-      console.log(`   (Email service not configured - skipping OTP verification)\n`);
-      
-      // Generate actual JWT token directly
-      const token = jwt.sign(
-        { id: user.id, email: user.email, role: user.role },
-        process.env.JWT_SECRET,
-        { expiresIn: '24h' }
-      );
+      if (isOtpBypassEnabled()) {
+        console.log(`\n🔓 DEV MODE: OTP bypass for ${user.email}`);
+        console.log('   (ALLOW_OTP_BYPASS=true)\n');
 
-      logAudit('login_success_dev_mode', 'auth', user.id, null, { email: user.email, otp_bypassed: true }, req);
+        const token = jwt.sign(
+          { id: user.id, email: user.email, role: user.role },
+          process.env.JWT_SECRET,
+          { expiresIn: '24h' }
+        );
 
-      return res.json({
-        message: 'Login successful',
-        requiresOTP: false,
-        token,
-        user: {
-          id: user.id,
-          fullName: user.full_name,
-          email: user.email,
-          role: user.role,
-        },
-      });
+        logAudit('login_success_dev_mode', 'auth', user.id, null, { email: user.email, otp_bypassed: true }, req);
+
+        return res.json({
+          message: 'Login successful',
+          requiresOTP: false,
+          token,
+          user: {
+            id: user.id,
+            fullName: user.full_name,
+            email: user.email,
+            role: user.role,
+          },
+        });
+      }
+
+      logAudit('login_failed', 'auth', user.id, null, { reason: 'otp_delivery_failed' }, req);
+      return res.status(503).json({ message: 'Unable to send verification code. Please contact support.' });
     }
 
     // Generate temporary session token (valid for 10 minutes, only for OTP verification)
@@ -237,7 +242,7 @@ router.post('/verify-otp', async (req, res) => {
     let decoded;
     try {
       decoded = jwt.verify(tempToken, process.env.JWT_SECRET);
-    } catch (err) {
+    } catch {
       return res.status(401).json({ message: 'Session expired. Please login again.' });
     }
 
@@ -301,7 +306,7 @@ router.post('/resend-otp', async (req, res) => {
     let decoded;
     try {
       decoded = jwt.verify(tempToken, process.env.JWT_SECRET);
-    } catch (err) {
+    } catch {
       return res.status(401).json({ message: 'Session expired. Please login again.' });
     }
 
@@ -339,7 +344,10 @@ router.post('/resend-otp', async (req, res) => {
     `).run(user.id, otpCode, expiresAt);
 
     // Send OTP
-    await sendLoginOTPEmail({ full_name: user.full_name, email: user.email }, otpCode);
+    const emailSent = await sendLoginOTPEmail({ full_name: user.full_name, email: user.email }, otpCode);
+    if (!emailSent) {
+      return res.status(503).json({ message: 'Unable to send verification code. Please try again later.' });
+    }
 
     logAudit('otp_resent', 'auth', user.id, null, { email: user.email }, req);
 
@@ -378,7 +386,7 @@ router.get('/me', async (req, res) => {
         status: user.status,
       },
     });
-  } catch (error) {
+  } catch {
     return res.status(401).json({ message: 'Invalid or expired token' });
   }
 });

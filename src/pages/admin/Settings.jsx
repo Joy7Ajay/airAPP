@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 
 const API_URL = 'http://localhost:5000/api';
@@ -8,6 +8,7 @@ const Settings = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [isLoading, setIsLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState('');
+  const avatarInputRef = useRef(null);
 
   // Profile settings
   const [profile, setProfile] = useState({
@@ -34,17 +35,215 @@ const Settings = () => {
     dateFormat: 'DD/MM/YYYY',
   });
 
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [passwordStatus, setPasswordStatus] = useState('');
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const res = await fetch(`${API_URL}/settings`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          if (data.user) {
+            setProfile((prev) => ({
+              ...prev,
+              fullName: data.user.full_name || prev.fullName,
+              email: data.user.email || prev.email,
+              phone: data.user.phone || prev.phone,
+              location: data.user.location || prev.location,
+              department: data.user.department || prev.department,
+            }));
+          }
+          if (data.settings) {
+            setSecurity((prev) => ({
+              ...prev,
+              twoFactor: data.settings.two_factor === 1,
+              loginAlerts: data.settings.login_alerts === 1,
+              sessionTimeout: data.settings.session_timeout || prev.sessionTimeout,
+            }));
+            setAppearance((prev) => ({
+              ...prev,
+              theme: data.settings.theme || prev.theme,
+              language: data.settings.language || prev.language,
+              timezone: data.settings.timezone || prev.timezone,
+              dateFormat: data.settings.date_format || prev.dateFormat,
+            }));
+          }
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    };
+
+    loadSettings();
+  }, [token]);
+
   const handleProfileSave = async () => {
     setIsLoading(true);
     setSaveStatus('');
     
-    // Simulate save
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setSaveStatus('Profile updated successfully!');
-    setIsLoading(false);
-    
-    setTimeout(() => setSaveStatus(''), 3000);
+    try {
+      const res = await fetch(`${API_URL}/settings/profile`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fullName: profile.fullName,
+          email: profile.email,
+          phone: profile.phone,
+          location: profile.location,
+          department: profile.department,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Save failed');
+      setSaveStatus('Profile updated successfully!');
+    } catch (error) {
+      console.error('Profile save error:', error);
+      setSaveStatus('Unable to save profile.');
+    } finally {
+      setIsLoading(false);
+      setTimeout(() => setSaveStatus(''), 3000);
+    }
+  };
+
+  const handleProfileCancel = async () => {
+    setSaveStatus('');
+    try {
+      const res = await fetch(`${API_URL}/settings`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok && data.user) {
+        setProfile((prev) => ({
+          ...prev,
+          fullName: data.user.full_name || prev.fullName,
+          email: data.user.email || prev.email,
+          phone: data.user.phone || prev.phone,
+          location: data.user.location || prev.location,
+          department: data.user.department || prev.department,
+        }));
+      }
+    } catch (error) {
+      console.error('Profile reset error:', error);
+    }
+  };
+
+  const handleSecurityChange = async (nextSecurity) => {
+    setSecurity(nextSecurity);
+    try {
+      await fetch(`${API_URL}/settings/security`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(nextSecurity),
+      });
+    } catch (error) {
+      console.error('Security update error:', error);
+    }
+  };
+
+  const handleAppearanceChange = async (nextAppearance) => {
+    setAppearance(nextAppearance);
+    try {
+      await fetch(`${API_URL}/settings/appearance`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(nextAppearance),
+      });
+    } catch (error) {
+      console.error('Appearance update error:', error);
+    }
+  };
+
+  const handlePasswordUpdate = async () => {
+    setPasswordStatus('');
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordStatus('New passwords do not match.');
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/settings/password`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Update failed');
+      setPasswordStatus('Password updated successfully.');
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (error) {
+      console.error('Password update error:', error);
+      setPasswordStatus(error.message || 'Unable to update password.');
+    } finally {
+      setTimeout(() => setPasswordStatus(''), 3000);
+    }
+  };
+
+  const handleAvatarUpload = async (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const res = await fetch(`${API_URL}/settings/avatar`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ image: reader.result }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Upload failed');
+        setSaveStatus('Avatar updated successfully!');
+      } catch (error) {
+        console.error('Avatar upload error:', error);
+        setSaveStatus('Unable to update avatar.');
+      } finally {
+        setTimeout(() => setSaveStatus(''), 3000);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAvatarRemove = async () => {
+    try {
+      const res = await fetch(`${API_URL}/settings/avatar`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ image: null }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Remove failed');
+      setSaveStatus('Avatar removed.');
+    } catch (error) {
+      console.error('Avatar remove error:', error);
+      setSaveStatus('Unable to remove avatar.');
+    } finally {
+      setTimeout(() => setSaveStatus(''), 3000);
+    }
   };
 
   const tabs = [
@@ -109,12 +308,25 @@ const Settings = () => {
                 <h3 className="text-white font-semibold text-lg">{profile.fullName}</h3>
                 <p className="text-slate-400 text-sm">{profile.email}</p>
                 <div className="flex gap-2 mt-3">
-                  <button className="px-3 py-1.5 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg text-sm font-medium transition-colors">
+                  <button
+                    onClick={() => avatarInputRef.current?.click()}
+                    className="px-3 py-1.5 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg text-sm font-medium transition-colors"
+                  >
                     Change Avatar
                   </button>
-                  <button className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-medium transition-colors">
+                  <button
+                    onClick={handleAvatarRemove}
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-medium transition-colors"
+                  >
                     Remove
                   </button>
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleAvatarUpload(e.target.files?.[0])}
+                  />
                 </div>
               </div>
             </div>
@@ -188,7 +400,10 @@ const Settings = () => {
                 <span className="text-green-400 text-sm">{saveStatus}</span>
               )}
               <div className="flex gap-3 ml-auto">
-                <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors">
+                <button
+                  onClick={handleProfileCancel}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors"
+                >
                   Cancel
                 </button>
                 <button
@@ -222,7 +437,7 @@ const Settings = () => {
                 <p className="text-slate-400 text-sm mt-1">Add an extra layer of security to your account</p>
               </div>
               <button
-                onClick={() => setSecurity({ ...security, twoFactor: !security.twoFactor })}
+                onClick={() => handleSecurityChange({ ...security, twoFactor: !security.twoFactor })}
                 className={`relative w-12 h-6 rounded-full transition-colors ${
                   security.twoFactor ? 'bg-cyan-500' : 'bg-slate-700'
                 }`}
@@ -244,7 +459,7 @@ const Settings = () => {
                 <p className="text-slate-400 text-sm mt-1">Get notified when someone logs into your account</p>
               </div>
               <button
-                onClick={() => setSecurity({ ...security, loginAlerts: !security.loginAlerts })}
+                onClick={() => handleSecurityChange({ ...security, loginAlerts: !security.loginAlerts })}
                 className={`relative w-12 h-6 rounded-full transition-colors ${
                   security.loginAlerts ? 'bg-cyan-500' : 'bg-slate-700'
                 }`}
@@ -264,7 +479,7 @@ const Settings = () => {
             <p className="text-slate-400 text-sm mb-4">Automatically log out after inactivity</p>
             <select
               value={security.sessionTimeout}
-              onChange={(e) => setSecurity({ ...security, sessionTimeout: e.target.value })}
+              onChange={(e) => handleSecurityChange({ ...security, sessionTimeout: e.target.value })}
               className="w-full md:w-64 px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
             >
               <option value="15">15 minutes</option>
@@ -284,6 +499,8 @@ const Settings = () => {
                 <input
                   type="password"
                   placeholder="Enter current password"
+                  value={passwordForm.currentPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
                   className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
                 />
               </div>
@@ -292,6 +509,8 @@ const Settings = () => {
                 <input
                   type="password"
                   placeholder="Enter new password"
+                  value={passwordForm.newPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
                   className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
                 />
               </div>
@@ -300,10 +519,16 @@ const Settings = () => {
                 <input
                   type="password"
                   placeholder="Confirm new password"
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
                   className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
                 />
               </div>
-              <button className="px-6 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg font-medium transition-colors">
+              {passwordStatus && <p className="text-xs text-cyan-400">{passwordStatus}</p>}
+              <button
+                onClick={handlePasswordUpdate}
+                className="px-6 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg font-medium transition-colors"
+              >
                 Update Password
               </button>
             </div>
@@ -321,7 +546,7 @@ const Settings = () => {
               {['dark', 'light', 'system'].map((theme) => (
                 <button
                   key={theme}
-                  onClick={() => setAppearance({ ...appearance, theme })}
+                  onClick={() => handleAppearanceChange({ ...appearance, theme })}
                   className={`flex-1 p-4 rounded-xl border transition-all ${
                     appearance.theme === theme
                       ? 'border-cyan-500 bg-cyan-500/10'
@@ -347,7 +572,7 @@ const Settings = () => {
                 <label className="block text-sm font-medium text-slate-300 mb-2">Language</label>
                 <select
                   value={appearance.language}
-                  onChange={(e) => setAppearance({ ...appearance, language: e.target.value })}
+                  onChange={(e) => handleAppearanceChange({ ...appearance, language: e.target.value })}
                   className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
                 >
                   <option value="en">English</option>
@@ -360,7 +585,7 @@ const Settings = () => {
                 <label className="block text-sm font-medium text-slate-300 mb-2">Timezone</label>
                 <select
                   value={appearance.timezone}
-                  onChange={(e) => setAppearance({ ...appearance, timezone: e.target.value })}
+                  onChange={(e) => handleAppearanceChange({ ...appearance, timezone: e.target.value })}
                   className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
                 >
                   <option value="Africa/Kampala">Africa/Kampala (UTC+3)</option>
@@ -373,7 +598,7 @@ const Settings = () => {
                 <label className="block text-sm font-medium text-slate-300 mb-2">Date Format</label>
                 <select
                   value={appearance.dateFormat}
-                  onChange={(e) => setAppearance({ ...appearance, dateFormat: e.target.value })}
+                  onChange={(e) => handleAppearanceChange({ ...appearance, dateFormat: e.target.value })}
                   className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
                 >
                   <option value="DD/MM/YYYY">DD/MM/YYYY</option>

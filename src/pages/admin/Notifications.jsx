@@ -9,6 +9,7 @@ const Notifications = () => {
   const [notifications, setNotifications] = useState([]);
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [actionStatus, setActionStatus] = useState('');
 
   // Notification stats
   const stats = {
@@ -54,6 +55,85 @@ const Notifications = () => {
 
     fetchNotifications();
   }, [token]);
+
+  const updatePreferences = async (nextPreferences) => {
+    setPreferences(nextPreferences);
+    try {
+      const res = await fetch(`${API_URL}/settings/notifications`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(nextPreferences),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Update failed');
+      setActionStatus(data.message || 'Preferences updated');
+    } catch (error) {
+      console.error('Preferences error:', error);
+      setActionStatus('Failed to update preferences');
+    } finally {
+      setTimeout(() => setActionStatus(''), 2500);
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    try {
+      const res = await fetch(`${API_URL}/actions/notifications/clear`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Clear failed');
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: 1 })));
+      setActionStatus(data.message || 'Notifications cleared');
+    } catch (error) {
+      console.error('Clear notifications error:', error);
+      setActionStatus('Unable to clear notifications');
+    } finally {
+      setTimeout(() => setActionStatus(''), 2500);
+    }
+  };
+
+  const exportHistory = async () => {
+    try {
+      const res = await fetch(`${API_URL}/actions/notifications/export`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'notification-history.csv';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setActionStatus('Notification history exported.');
+    } catch (error) {
+      console.error('Export notifications error:', error);
+      setActionStatus('Export failed');
+    } finally {
+      setTimeout(() => setActionStatus(''), 2500);
+    }
+  };
+
+  const configureAlertRules = async () => {
+    try {
+      const res = await fetch(`${API_URL}/actions/notifications/alerts`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Action failed');
+      window.alert(data.message || 'Alert rules configured.');
+    } catch (error) {
+      console.error('Alert rules error:', error);
+      window.alert('Unable to configure alert rules.');
+    }
+  };
 
   const markAsRead = async (id) => {
     try {
@@ -170,6 +250,7 @@ const Notifications = () => {
             Notifications Center
           </h1>
           <p className="text-slate-400 mt-1">Stay informed about system events, updates, and critical actions.</p>
+          {actionStatus && <p className="text-xs text-cyan-400 mt-2">{actionStatus}</p>}
         </div>
         <button
           onClick={markAllAsRead}
@@ -317,7 +398,7 @@ const Notifications = () => {
                   </p>
                 </div>
                 <button
-                  onClick={() => setPreferences(prev => ({ ...prev, [key]: !value }))}
+                  onClick={() => updatePreferences({ ...preferences, [key]: !value })}
                   className={`relative w-12 h-6 rounded-full transition-colors ${
                     value ? 'bg-cyan-500' : 'bg-slate-700'
                   }`}
@@ -335,13 +416,22 @@ const Notifications = () => {
           <div className="mt-6 pt-6 border-t border-slate-800">
             <h3 className="text-white font-medium mb-4">Quick Actions</h3>
             <div className="space-y-2">
-              <button className="w-full px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm text-left transition-colors">
+              <button
+                onClick={clearAllNotifications}
+                className="w-full px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm text-left transition-colors"
+              >
                 Clear all notifications
               </button>
-              <button className="w-full px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm text-left transition-colors">
+              <button
+                onClick={exportHistory}
+                className="w-full px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm text-left transition-colors"
+              >
                 Export notification history
               </button>
-              <button className="w-full px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm text-left transition-colors">
+              <button
+                onClick={configureAlertRules}
+                className="w-full px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm text-left transition-colors"
+              >
                 Configure alert rules
               </button>
             </div>

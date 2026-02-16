@@ -1,12 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import TerrainMap from '../../components/TerrainMap';
+
+const API_URL = 'http://localhost:5000/api';
 
 const Overview = () => {
   const { user, token } = useOutletContext();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
-  const [mapboxToken, setMapboxToken] = useState(localStorage.getItem('mapboxToken') || '');
+  const mapRef = useRef(null);
+  const mapContainerRef = useRef(null);
+  const [mapboxToken, setMapboxToken] = useState(
+    localStorage.getItem('mapboxToken') || import.meta.env.VITE_MAPBOX_TOKEN || ''
+  );
   const [showTokenInput, setShowTokenInput] = useState(false);
   const [stats, setStats] = useState({
     totalArrivals: 0,
@@ -17,55 +23,7 @@ const Overview = () => {
   const [recentActivity, setRecentActivity] = useState([]);
   const [topAirlines, setTopAirlines] = useState([]);
   const [topDestinations, setTopDestinations] = useState([]);
-
-  // Simulated data - in production, this would come from API
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Mock data for Uganda air travel
-      setStats({
-        totalArrivals: 124592,
-        totalDepartures: 118456,
-        growthRate: 12.8,
-        activeAirlines: 24,
-      });
-
-      setTopAirlines([
-        { name: 'Uganda Airlines', flights: 2450, percentage: 28 },
-        { name: 'Ethiopian Airlines', flights: 1890, percentage: 22 },
-        { name: 'Kenya Airways', flights: 1560, percentage: 18 },
-        { name: 'Emirates', flights: 1230, percentage: 14 },
-        { name: 'Qatar Airways', flights: 980, percentage: 11 },
-        { name: 'Turkish Airlines', flights: 620, percentage: 7 },
-      ]);
-
-      setTopDestinations([
-        { country: 'Kenya', city: 'Nairobi', passengers: 45230, trend: 'up' },
-        { country: 'UAE', city: 'Dubai', passengers: 38450, trend: 'up' },
-        { country: 'Ethiopia', city: 'Addis Ababa', passengers: 32100, trend: 'stable' },
-        { country: 'South Africa', city: 'Johannesburg', passengers: 28900, trend: 'up' },
-        { country: 'UK', city: 'London', passengers: 24500, trend: 'down' },
-      ]);
-
-      setRecentActivity([
-        { type: 'arrival', flight: 'UR801', airline: 'Uganda Airlines', from: 'Dubai', time: '10 min ago', status: 'landed' },
-        { type: 'departure', flight: 'ET302', airline: 'Ethiopian Airlines', to: 'Addis Ababa', time: '25 min ago', status: 'departed' },
-        { type: 'arrival', flight: 'KQ456', airline: 'Kenya Airways', from: 'Nairobi', time: '45 min ago', status: 'landed' },
-        { type: 'departure', flight: 'UR802', airline: 'Uganda Airlines', to: 'Johannesburg', time: '1 hr ago', status: 'departed' },
-        { type: 'arrival', flight: 'EK723', airline: 'Emirates', from: 'Dubai', time: '2 hrs ago', status: 'landed' },
-      ]);
-
-      setIsLoading(false);
-    };
-
-    loadData();
-  }, []);
-
-  // Monthly data for chart
-  const monthlyData = [
+  const [monthlyData, setMonthlyData] = useState([
     { month: 'Jan', arrivals: 8500, departures: 8200 },
     { month: 'Feb', arrivals: 9200, departures: 8900 },
     { month: 'Mar', arrivals: 10500, departures: 10100 },
@@ -78,7 +36,54 @@ const Overview = () => {
     { month: 'Oct', arrivals: 10800, departures: 10500 },
     { month: 'Nov', arrivals: 11900, departures: 11500 },
     { month: 'Dec', arrivals: 14200, departures: 13700 },
-  ];
+  ]);
+
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch(`${API_URL}/dashboard/overview`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setStats(data.stats || stats);
+          setTopAirlines(data.topAirlines || topAirlines);
+          setTopDestinations(data.topDestinations || topDestinations);
+          setRecentActivity(data.recentActivity || recentActivity);
+          setMonthlyData(data.monthlyData || monthlyData);
+        }
+      } catch (error) {
+        console.error('Error loading overview data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [token]);
+
+  const handleZoomIn = () => {
+    mapRef.current?.zoomIn();
+  };
+
+  const handleZoomOut = () => {
+    mapRef.current?.zoomOut();
+  };
+
+  const handleRecenter = () => {
+    mapRef.current?.flyTo({ center: [32.5, 1.5], zoom: 6.5, bearing: -10, pitch: 45 });
+  };
+
+  const handleResetView = () => {
+    mapRef.current?.easeTo({ zoom: 6.5, bearing: 0, pitch: 0 });
+  };
+
+  const handleFullscreen = () => {
+    if (mapContainerRef.current?.requestFullscreen) {
+      mapContainerRef.current.requestFullscreen();
+    }
+  };
 
   const maxValue = Math.max(...monthlyData.flatMap(d => [d.arrivals, d.departures]));
 
@@ -439,6 +444,8 @@ const Overview = () => {
             <TerrainMap 
               accessToken={mapboxToken} 
               onTokenNeeded={() => setShowTokenInput(true)}
+              mapRef={mapRef}
+              containerRef={mapContainerRef}
             />
 
             {/* Settings button */}
@@ -458,22 +465,36 @@ const Overview = () => {
           <div className="lg:col-span-2 p-6 bg-white/80 border-l border-slate-200 flex flex-col justify-center">
             {/* Navigation Icons */}
             <div className="flex flex-col items-end gap-3 mb-8">
-              <button className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-200 transition-colors">
+              <button
+                onClick={handleZoomIn}
+                className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-200 transition-colors"
+              >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
               </button>
-              <button className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-200 transition-colors">
+              <button
+                onClick={handleZoomOut}
+                className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-200 transition-colors"
+              >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
                 </svg>
               </button>
-              <button className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-500 hover:bg-indigo-200 transition-colors">
+              <button
+                onClick={handleRecenter}
+                className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-500 hover:bg-indigo-200 transition-colors"
+              >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 </svg>
               </button>
-              <button className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-200 transition-colors">
+              <button
+                onClick={handleResetView}
+                onDoubleClick={handleFullscreen}
+                className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-200 transition-colors"
+                title="Reset view (double-click for fullscreen)"
+              >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
                 </svg>

@@ -21,6 +21,9 @@ db.exec(`
     password TEXT NOT NULL,
     role TEXT DEFAULT 'user' CHECK(role IN ('admin', 'user')),
     status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected')),
+    phone TEXT,
+    location TEXT,
+    department TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     approved_at DATETIME,
@@ -133,40 +136,85 @@ db.exec(`
 // Add expires_at column if not exists (for existing databases)
 try {
   db.exec(`ALTER TABLE deletion_requests ADD COLUMN expires_at DATETIME`);
-} catch (e) {
+} catch {
   // Column already exists
 }
 
 // Add soft delete columns to users table if not exists
 try {
   db.exec(`ALTER TABLE users ADD COLUMN is_deleted INTEGER DEFAULT 0`);
-} catch (e) {
+} catch {
   // Column already exists
 }
 try {
   db.exec(`ALTER TABLE users ADD COLUMN deleted_at DATETIME`);
-} catch (e) {
+} catch {
   // Column already exists
 }
 try {
   db.exec(`ALTER TABLE users ADD COLUMN deleted_by INTEGER`);
-} catch (e) {
+} catch {
+  // Column already exists
+}
+try {
+  db.exec(`ALTER TABLE users ADD COLUMN phone TEXT`);
+} catch {
+  // Column already exists
+}
+try {
+  db.exec(`ALTER TABLE users ADD COLUMN location TEXT`);
+} catch {
+  // Column already exists
+}
+try {
+  db.exec(`ALTER TABLE users ADD COLUMN department TEXT`);
+} catch {
   // Column already exists
 }
 
-// Check if admin exists, if not create placeholder (will be activated on first login)
-const adminExists = db.prepare('SELECT id FROM users WHERE email = ?').get('ljoy23200@gmail.com');
-if (!adminExists) {
-  // Insert admin with pre-approved status
-  const hashedPassword = bcrypt.hashSync('admin123', 10); // Default password, change immediately!
-  
-  db.prepare(`
-    INSERT INTO users (full_name, email, password, role, status)
-    VALUES (?, ?, ?, 'admin', 'approved')
-  `).run('System Administrator', 'ljoy23200@gmail.com', hashedPassword);
-  
-  console.log('✅ Admin account created with default password: admin123');
-  console.log('⚠️  Please change this password immediately after first login!');
+// User settings table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_settings (
+    user_id INTEGER PRIMARY KEY,
+    two_factor INTEGER DEFAULT 1,
+    login_alerts INTEGER DEFAULT 1,
+    session_timeout TEXT DEFAULT '30',
+    theme TEXT DEFAULT 'dark',
+    language TEXT DEFAULT 'en',
+    timezone TEXT DEFAULT 'Africa/Kampala',
+    date_format TEXT DEFAULT 'DD/MM/YYYY',
+    notify_email INTEGER DEFAULT 1,
+    notify_push INTEGER DEFAULT 1,
+    notify_security INTEGER DEFAULT 1,
+    notify_updates INTEGER DEFAULT 0,
+    notify_marketing INTEGER DEFAULT 0,
+    avatar_data TEXT,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
+
+// Optional first-run admin bootstrap via environment variables.
+const adminEmail = (process.env.ADMIN_EMAIL || '').trim();
+const adminName = (process.env.ADMIN_BOOTSTRAP_NAME || 'System Administrator').trim();
+const bootstrapPassword = process.env.ADMIN_BOOTSTRAP_PASSWORD || '';
+
+if (adminEmail) {
+  const adminExists = db.prepare('SELECT id FROM users WHERE email = ?').get(adminEmail);
+
+  if (!adminExists) {
+    if (bootstrapPassword.length < 12) {
+      console.warn('⚠️  Admin account not seeded. Set ADMIN_BOOTSTRAP_PASSWORD (12+ chars) for first-run bootstrap.');
+    } else {
+      const hashedPassword = bcrypt.hashSync(bootstrapPassword, 10);
+      db.prepare(`
+        INSERT INTO users (full_name, email, password, role, status)
+        VALUES (?, ?, ?, 'admin', 'approved')
+      `).run(adminName || 'System Administrator', adminEmail, hashedPassword);
+
+      console.log(`✅ Admin account created for ${adminEmail}`);
+    }
+  }
 }
 
 export default db;

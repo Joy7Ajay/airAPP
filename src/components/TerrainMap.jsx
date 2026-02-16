@@ -15,10 +15,16 @@ const airports = [
 // Entebbe is the hub - all routes connect to it
 const hubCoords = [32.4435, 0.0424];
 
-const TerrainMap = ({ accessToken, onTokenNeeded }) => {
+const TerrainMap = ({ accessToken, onTokenNeeded, mapRef, containerRef }) => {
   const mapContainer = useRef(null);
   const map = useRef(null);
   const [mapLoaded, setMapLoaded] = useState(false);
+
+  useEffect(() => {
+    if (containerRef) {
+      containerRef.current = mapContainer.current;
+    }
+  }, [containerRef]);
 
   useEffect(() => {
     if (!accessToken) {
@@ -110,6 +116,9 @@ const TerrainMap = ({ accessToken, onTokenNeeded }) => {
       });
 
       setMapLoaded(true);
+      if (mapRef) {
+        mapRef.current = map.current;
+      }
     });
 
     // Cleanup

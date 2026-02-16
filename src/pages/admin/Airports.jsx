@@ -4,6 +4,8 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMap } from
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
+const API_URL = 'http://localhost:5000/api';
+
 // Fix for default marker icons in React-Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -211,14 +213,35 @@ const SetBoundsComponent = ({ airports }) => {
 
 const Airports = () => {
   const { user, token } = useOutletContext();
+  const [airports, setAirports] = useState(ugandaAirports);
+  const [routes, setRoutes] = useState(flightRoutes);
   const [selectedAirport, setSelectedAirport] = useState(null);
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [showRoutes, setShowRoutes] = useState(true);
   const [timeRange, setTimeRange] = useState('1Y');
 
+  useEffect(() => {
+    const loadAirports = async () => {
+      try {
+        const res = await fetch(`${API_URL}/dashboard/airports`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setAirports(data.airports || ugandaAirports);
+          setRoutes(data.routes || flightRoutes);
+        }
+      } catch (error) {
+        console.error('Error loading airports data:', error);
+      }
+    };
+
+    loadAirports();
+  }, [token]);
+
   // Filter airports
-  const filteredAirports = ugandaAirports.filter(airport => {
+  const filteredAirports = airports.filter(airport => {
     if (filterType !== 'all' && airport.type !== filterType) return false;
     if (filterStatus !== 'all' && airport.status !== filterStatus) return false;
     return true;
@@ -235,8 +258,8 @@ const Airports = () => {
   };
 
   // Calculate totals
-  const totalPassengers = ugandaAirports.reduce((sum, a) => sum + a.passengers, 0);
-  const totalFlights = ugandaAirports.reduce((sum, a) => sum + a.flights, 0);
+  const totalPassengers = airports.reduce((sum, a) => sum + a.passengers, 0);
+  const totalFlights = airports.reduce((sum, a) => sum + a.flights, 0);
 
   return (
     <div className="space-y-6">
@@ -277,7 +300,7 @@ const Airports = () => {
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800">
           <span className="text-slate-400 text-sm">Total Airports</span>
-          <p className="text-2xl font-bold text-white mt-1">{ugandaAirports.length}</p>
+          <p className="text-2xl font-bold text-white mt-1">{airports.length}</p>
           <span className="text-emerald-400 text-xs">Active locations</span>
         </div>
         <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800">
@@ -297,7 +320,7 @@ const Airports = () => {
         </div>
         <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800">
           <span className="text-slate-400 text-sm">Domestic Routes</span>
-          <p className="text-2xl font-bold text-white mt-1">{flightRoutes.length}</p>
+          <p className="text-2xl font-bold text-white mt-1">{routes.length}</p>
           <span className="text-cyan-400 text-xs">Active connections</span>
         </div>
       </div>
@@ -368,9 +391,9 @@ const Airports = () => {
               <SetBoundsComponent airports={filteredAirports} />
 
               {/* Flight Routes */}
-              {showRoutes && flightRoutes.map((route, index) => {
-                const fromAirport = ugandaAirports[route.from];
-                const toAirport = ugandaAirports[route.to];
+              {showRoutes && routes.map((route, index) => {
+                const fromAirport = airports[route.from];
+                const toAirport = airports[route.to];
                 
                 // Check if both airports are in filtered list
                 const fromVisible = filteredAirports.find(a => a.id === fromAirport.id);
@@ -533,7 +556,7 @@ const Airports = () => {
           <div className="bg-slate-900/50 rounded-2xl p-5 border border-slate-800">
             <h3 className="text-lg font-semibold text-white mb-4">Top Airports</h3>
             <div className="space-y-3">
-              {ugandaAirports
+              {airports
                 .sort((a, b) => b.passengers - a.passengers)
                 .slice(0, 5)
                 .map((airport, i) => (

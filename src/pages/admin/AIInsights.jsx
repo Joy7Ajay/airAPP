@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 
+const API_URL = 'http://localhost:5000/api';
+
 const AIInsights = () => {
   const { user, token } = useOutletContext();
   const [isLoading, setIsLoading] = useState(true);
   const [selectedModel, setSelectedModel] = useState('all');
+  const [actionStatus, setActionStatus] = useState('');
 
   // AI Model data
   const [models, setModels] = useState([
@@ -47,7 +50,7 @@ const AIInsights = () => {
   ]);
 
   // Accuracy trends
-  const accuracyTrends = [
+  const [accuracyTrends, setAccuracyTrends] = useState([
     { week: 'W1', value: 88 },
     { week: 'W2', value: 89 },
     { week: 'W3', value: 91 },
@@ -56,34 +59,91 @@ const AIInsights = () => {
     { week: 'W6', value: 92 },
     { week: 'W7', value: 94 },
     { week: 'W8', value: 95 },
-  ];
+  ]);
 
   // Inference requests
-  const inferenceData = [
+  const [inferenceData, setInferenceData] = useState([
     { hour: '00:00', requests: 450 },
     { hour: '04:00', requests: 280 },
     { hour: '08:00', requests: 890 },
     { hour: '12:00', requests: 1200 },
     { hour: '16:00', requests: 980 },
     { hour: '20:00', requests: 750 },
-  ];
+  ]);
 
   // Model performance details
-  const performanceMetrics = [
+  const [performanceMetrics, setPerformanceMetrics] = useState([
     { model: 'Revenue Predictor', accuracy: 94.2, precision: 93.1, recall: 95.1, f1Score: 94.1 },
     { model: 'User Flow Analyzer', accuracy: 91.8, precision: 90.5, recall: 92.8, f1Score: 91.6 },
     { model: 'Anomaly Detector', accuracy: 89.5, precision: 88.2, recall: 90.4, f1Score: 89.3 },
     { model: 'Demand Forecaster', accuracy: 96.1, precision: 95.8, recall: 96.3, f1Score: 96.0 },
-  ];
+  ]);
 
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 600));
-      setIsLoading(false);
+      try {
+        const res = await fetch(`${API_URL}/dashboard/ai-insights`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setModels(data.models || models);
+          setAccuracyTrends(data.accuracyTrends || accuracyTrends);
+          setInferenceData(data.inferenceData || inferenceData);
+          setPerformanceMetrics(data.performanceMetrics || performanceMetrics);
+        }
+      } catch (error) {
+        console.error('Error loading AI insights:', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
     loadData();
-  }, []);
+  }, [token]);
+
+  const downloadReport = async () => {
+    try {
+      const res = await fetch(`${API_URL}/actions/ai/export`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'ai-model-performance.csv';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setActionStatus('Report exported.');
+    } catch (error) {
+      console.error('Export error:', error);
+      setActionStatus('Export failed.');
+    } finally {
+      setTimeout(() => setActionStatus(''), 2500);
+    }
+  };
+
+  const handleRetrain = async () => {
+    setActionStatus('Starting retraining...');
+    try {
+      const res = await fetch(`${API_URL}/actions/ai/retrain`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Retrain failed');
+      setModels(data.models || models);
+      setActionStatus(data.message || 'Retraining started');
+    } catch (error) {
+      console.error('Retrain error:', error);
+      setActionStatus('Retrain failed.');
+    } finally {
+      setTimeout(() => setActionStatus(''), 2500);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -110,8 +170,12 @@ const AIInsights = () => {
             AI-Powered Insights
           </h1>
           <p className="text-slate-400 mt-1">Analyze patterns, monitor performance, and support predictive decision-making.</p>
+          {actionStatus && <p className="text-xs text-cyan-400 mt-2">{actionStatus}</p>}
         </div>
-        <button className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-medium transition-colors flex items-center gap-2">
+        <button
+          onClick={handleRetrain}
+          className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-medium transition-colors flex items-center gap-2"
+        >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
@@ -251,7 +315,10 @@ const AIInsights = () => {
       <div className="bg-slate-900/50 rounded-2xl p-6 border border-slate-800">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-white">Model Performance Details</h2>
-          <button className="text-cyan-400 text-sm hover:text-cyan-300 flex items-center gap-1">
+          <button
+            onClick={downloadReport}
+            className="text-cyan-400 text-sm hover:text-cyan-300 flex items-center gap-1"
+          >
             Export Report
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />

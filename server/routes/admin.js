@@ -8,7 +8,6 @@ import {
   sendRejectionEmail,
   sendAdminTransferOldAdminEmail,
   sendAdminTransferNewAdminEmail,
-  sendAdminTransferCompleteEmail,
   sendDeletionVerificationEmail
 } from '../config/email.js';
 import { logAudit } from './auth.js';
@@ -23,20 +22,23 @@ router.use(isAdmin);
 router.get('/requests', (req, res) => {
   try {
     const { status } = req.query;
-    
-    let query = `
-      SELECT id, full_name, email, status, created_at, updated_at, rejection_reason
-      FROM users 
-      WHERE role = 'user' AND (is_deleted = 0 OR is_deleted IS NULL)
-    `;
-    
+
+    let requests;
     if (status && ['pending', 'approved', 'rejected'].includes(status)) {
-      query += ` AND status = '${status}'`;
+      requests = db.prepare(`
+        SELECT id, full_name, email, status, created_at, updated_at, rejection_reason
+        FROM users 
+        WHERE role = 'user' AND (is_deleted = 0 OR is_deleted IS NULL) AND status = ?
+        ORDER BY created_at DESC
+      `).all(status);
+    } else {
+      requests = db.prepare(`
+        SELECT id, full_name, email, status, created_at, updated_at, rejection_reason
+        FROM users 
+        WHERE role = 'user' AND (is_deleted = 0 OR is_deleted IS NULL)
+        ORDER BY created_at DESC
+      `).all();
     }
-    
-    query += ' ORDER BY created_at DESC';
-    
-    const requests = db.prepare(query).all();
     
     res.json({ requests });
   } catch (error) {

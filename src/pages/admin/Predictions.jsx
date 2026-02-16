@@ -1,27 +1,30 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 
+const API_URL = 'http://localhost:5000/api';
+
 const Predictions = () => {
   const { user, token } = useOutletContext();
   const [isLoading, setIsLoading] = useState(true);
   const [selectedScenario, setSelectedScenario] = useState('optimistic');
+  const [actionStatus, setActionStatus] = useState('');
 
   // Prediction stats
-  const stats = {
+  const [stats, setStats] = useState({
     nextMonth: '$172,000',
     passengers: '58,900',
     growth: '5.4%',
-  };
+  });
 
   // Scenario data
-  const scenarioData = {
+  const [scenarioData, setScenarioData] = useState({
     optimistic: [120, 135, 150, 165, 180, 195, 210],
     baseline: [115, 125, 135, 145, 155, 165, 175],
     conservative: [110, 115, 120, 125, 130, 135, 140],
-  };
+  });
 
   // AI Generated insights
-  const aiInsights = [
+  const [aiInsights, setAiInsights] = useState([
     { 
       type: 'growth', 
       title: 'Strong Revenue Growth Expected',
@@ -50,26 +53,103 @@ const Predictions = () => {
       confidence: 90,
       icon: '⚠️'
     },
-  ];
+  ]);
 
   // Forecast timeline
-  const forecastTimeline = [
+  const [forecastTimeline, setForecastTimeline] = useState([
     { month: 'Feb', actual: 42000, predicted: 41500 },
     { month: 'Mar', actual: 45000, predicted: 44800 },
     { month: 'Apr', actual: 48000, predicted: 47500 },
     { month: 'May', actual: null, predicted: 52000 },
     { month: 'Jun', actual: null, predicted: 55000 },
     { month: 'Jul', actual: null, predicted: 58000 },
-  ];
+  ]);
 
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 600));
-      setIsLoading(false);
+      try {
+        const res = await fetch(`${API_URL}/dashboard/predictions`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setStats(data.stats || stats);
+          setScenarioData(data.scenarioData || scenarioData);
+          setAiInsights(data.aiInsights || aiInsights);
+          setForecastTimeline(data.forecastTimeline || forecastTimeline);
+        }
+      } catch (error) {
+        console.error('Error loading predictions:', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
     loadData();
-  }, []);
+  }, [token]);
+
+  const downloadReport = async () => {
+    try {
+      const res = await fetch(`${API_URL}/actions/predictions/export`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'predictions-forecast.csv';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setActionStatus('Report exported.');
+    } catch (error) {
+      console.error('Export error:', error);
+      setActionStatus('Export failed.');
+    } finally {
+      setTimeout(() => setActionStatus(''), 2500);
+    }
+  };
+
+  const refreshInsights = async () => {
+    setActionStatus('Refreshing insights...');
+    try {
+      const res = await fetch(`${API_URL}/actions/predictions/refresh`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Refresh failed');
+      setAiInsights(data.aiInsights || aiInsights);
+      setActionStatus(data.message || 'Insights refreshed');
+    } catch (error) {
+      console.error('Refresh error:', error);
+      setActionStatus('Refresh failed.');
+    } finally {
+      setTimeout(() => setActionStatus(''), 2500);
+    }
+  };
+
+  const exploreInsight = async (index) => {
+    try {
+      const res = await fetch(`${API_URL}/actions/predictions/insights/explore`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ index }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Explore failed');
+      const summary = data.recommendations?.join('\n') || '';
+      window.alert(`${data.insight.title}\n\n${data.insight.description}\n\nRecommendations:\n${summary}`);
+    } catch (error) {
+      console.error('Explore error:', error);
+      window.alert('Unable to load insight details.');
+    }
+  };
 
   if (isLoading) {
     return (
@@ -96,8 +176,12 @@ const Predictions = () => {
             Predictions & Forecasting
           </h1>
           <p className="text-slate-400 mt-1">Predictive analytics to anticipate trends and reduce uncertainty.</p>
+          {actionStatus && <p className="text-xs text-cyan-400 mt-2">{actionStatus}</p>}
         </div>
-        <button className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-medium transition-colors flex items-center gap-2">
+        <button
+          onClick={downloadReport}
+          className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-medium transition-colors flex items-center gap-2"
+        >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
           </svg>
@@ -280,7 +364,12 @@ const Predictions = () => {
             </svg>
             AI Generated Insights Stream
           </h2>
-          <button className="text-cyan-400 text-sm hover:text-cyan-300">Refresh</button>
+          <button
+            onClick={refreshInsights}
+            className="text-cyan-400 text-sm hover:text-cyan-300"
+          >
+            Refresh
+          </button>
         </div>
 
         <div className="space-y-4">
@@ -310,7 +399,10 @@ const Predictions = () => {
                   </div>
                   <p className="text-slate-400 text-sm">{insight.description}</p>
                 </div>
-                <button className="text-cyan-400 hover:text-cyan-300 text-sm">
+                <button
+                  onClick={() => exploreInsight(i)}
+                  className="text-cyan-400 hover:text-cyan-300 text-sm"
+                >
                   Explore →
                 </button>
               </div>

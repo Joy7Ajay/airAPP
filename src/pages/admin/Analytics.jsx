@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 
+const API_URL = 'http://localhost:5000/api';
+
 const Analytics = () => {
   const { user, token } = useOutletContext();
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState('yearly');
   const [selectedMetric, setSelectedMetric] = useState('passengers');
+  const [quickRange, setQuickRange] = useState('today');
 
   // Mock data
   const [stats, setStats] = useState({
@@ -14,18 +17,7 @@ const Analytics = () => {
     avgSession: '4m 32s',
     bounceRate: '3.8',
   });
-
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 600));
-      setIsLoading(false);
-    };
-    loadData();
-  }, []);
-
-  // Monthly trend data
-  const monthlyTrend = [
+  const [monthlyTrend, setMonthlyTrend] = useState([
     { month: 'Jan', value: 65 },
     { month: 'Feb', value: 72 },
     { month: 'Mar', value: 85 },
@@ -38,30 +30,49 @@ const Analytics = () => {
     { month: 'Oct', value: 82 },
     { month: 'Nov', value: 90 },
     { month: 'Dec', value: 110 },
-  ];
-
-  // Engagement metrics
-  const engagementMetrics = [
+  ]);
+  const [engagementMetrics, setEngagementMetrics] = useState([
     { label: 'Direct Traffic', value: 45, color: 'cyan' },
     { label: 'Referral', value: 25, color: 'blue' },
     { label: 'Organic Search', value: 20, color: 'purple' },
     { label: 'Social Media', value: 10, color: 'pink' },
-  ];
-
-  // Hourly analytics
-  const hourlyData = Array.from({ length: 24 }, (_, i) => ({
+  ]);
+  const [hourlyData, setHourlyData] = useState(Array.from({ length: 24 }, (_, i) => ({
     hour: i,
     value: Math.floor(Math.random() * 100) + 20,
-  }));
-
-  // Country breakdown
-  const countryData = [
+  })));
+  const [countryData, setCountryData] = useState([
     { country: 'Kenya', code: 'KE', passengers: 45230, percentage: 28 },
     { country: 'UAE', code: 'AE', passengers: 38450, percentage: 24 },
     { country: 'Ethiopia', code: 'ET', passengers: 32100, percentage: 20 },
     { country: 'South Africa', code: 'ZA', passengers: 28900, percentage: 18 },
     { country: 'United Kingdom', code: 'GB', passengers: 16320, percentage: 10 },
-  ];
+  ]);
+
+  const loadData = async (range = quickRange) => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/dashboard/analytics?range=${encodeURIComponent(range)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setStats(data.stats || stats);
+        setMonthlyTrend(data.monthlyTrend || monthlyTrend);
+        setEngagementMetrics(data.engagementMetrics || engagementMetrics);
+        setHourlyData(data.hourlyData || hourlyData);
+        setCountryData(data.countryData || countryData);
+      }
+    } catch (error) {
+      console.error('Error loading analytics data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [token]);
 
   if (isLoading) {
     return (
@@ -271,8 +282,28 @@ const Analytics = () => {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-white">Hourly Analytics</h2>
           <div className="flex items-center gap-2">
-            <button className="px-3 py-1.5 bg-cyan-500 text-white rounded-lg text-sm">Today</button>
-            <button className="px-3 py-1.5 bg-slate-800 text-slate-400 rounded-lg text-sm">Yesterday</button>
+          <button
+            onClick={() => {
+              setQuickRange('today');
+              loadData('today');
+            }}
+            className={`px-3 py-1.5 rounded-lg text-sm ${
+              quickRange === 'today' ? 'bg-cyan-500 text-white' : 'bg-slate-800 text-slate-400'
+            }`}
+          >
+            Today
+          </button>
+          <button
+            onClick={() => {
+              setQuickRange('yesterday');
+              loadData('yesterday');
+            }}
+            className={`px-3 py-1.5 rounded-lg text-sm ${
+              quickRange === 'yesterday' ? 'bg-cyan-500 text-white' : 'bg-slate-800 text-slate-400'
+            }`}
+          >
+            Yesterday
+          </button>
           </div>
         </div>
 
