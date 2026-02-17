@@ -151,6 +151,45 @@ const Predictions = () => {
     }
   };
 
+  const scenarioValues = Array.isArray(scenarioData?.[selectedScenario]) ? scenarioData[selectedScenario] : [];
+  const scenarioMax = Math.max(...scenarioValues, 1);
+  const scenarioStart = scenarioValues[0] || 0;
+  const scenarioEnd = scenarioValues[scenarioValues.length - 1] || 0;
+  const scenarioGrowth = scenarioStart > 0 ? ((scenarioEnd - scenarioStart) / scenarioStart) * 100 : 0;
+
+  const timeline = Array.isArray(forecastTimeline) ? forecastTimeline : [];
+  const actualPoints = timeline
+    .map((point, index) => ({ x: index, y: point.actual }))
+    .filter((point) => point.y !== null && point.y !== undefined);
+  const predictedPoints = timeline
+    .map((point, index) => ({ x: index, y: point.predicted }))
+    .filter((point) => point.y !== null && point.y !== undefined);
+  const allYValues = [...actualPoints, ...predictedPoints].map((point) => point.y);
+  const yMax = Math.max(...allYValues, 1);
+  const yMin = Math.min(...allYValues, 0);
+  const yPad = Math.max((yMax - yMin) * 0.12, 1);
+  const chartMin = yMin - yPad;
+  const chartMax = yMax + yPad;
+  const chartHeight = 120;
+  const chartWidth = 300;
+  const xStep = timeline.length > 1 ? chartWidth / (timeline.length - 1) : chartWidth;
+  const toY = (value) => chartHeight - (((value - chartMin) / Math.max(chartMax - chartMin, 1)) * chartHeight) + 15;
+  const toX = (index) => index * xStep;
+  const pointsToPath = (points) => points.map((point, index) => `${index === 0 ? 'M' : 'L'}${toX(point.x)},${toY(point.y)}`).join(' ');
+  const actualPath = pointsToPath(actualPoints);
+  const predictedPath = pointsToPath(predictedPoints);
+
+  const confidenceUpper = predictedPoints.map((point) => ({ ...point, y: point.y * 1.08 }));
+  const confidenceLower = [...predictedPoints].reverse().map((point) => ({ ...point, y: point.y * 0.92 }));
+  const confidenceBandPath = predictedPoints.length
+    ? `${pointsToPath(confidenceUpper)} ${pointsToPath(confidenceLower).replace('M', 'L')} Z`
+    : '';
+
+  const yTicks = [chartMax, (chartMax + chartMin) / 2, chartMin].map((value) => {
+    const rounded = Math.max(0, Math.round(value / 1000));
+    return `$${rounded.toLocaleString()}K`;
+  });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -257,7 +296,7 @@ const Predictions = () => {
           </div>
 
           <div className="h-48 flex items-end gap-3">
-            {scenarioData[selectedScenario].map((value, i) => (
+            {scenarioValues.map((value, i) => (
               <div key={i} className="flex-1 flex flex-col items-center gap-2">
                 <div 
                   className={`w-full rounded-t-lg transition-all duration-300 ${
@@ -265,7 +304,7 @@ const Predictions = () => {
                     selectedScenario === 'baseline' ? 'bg-gradient-to-t from-cyan-500/80 to-blue-500/80' :
                     'bg-gradient-to-t from-yellow-500/80 to-orange-500/80'
                   }`}
-                  style={{ height: `${(value / 220) * 150}px` }}
+                  style={{ height: `${(value / scenarioMax) * 150}px` }}
                 />
                 <span className="text-xs text-slate-500">M{i + 1}</span>
               </div>
@@ -275,9 +314,9 @@ const Predictions = () => {
           <div className="mt-4 p-4 bg-slate-800/50 rounded-xl">
             <p className="text-sm text-slate-400">
               <span className="text-white font-medium">
-                {selectedScenario === 'optimistic' ? '📈 Growth trajectory: +75% by month 7' :
-                 selectedScenario === 'baseline' ? '📊 Steady growth: +52% by month 7' :
-                 '📉 Conservative estimate: +27% by month 7'}
+                {scenarioValues.length
+                  ? `📊 ${selectedScenario} scenario: ${scenarioGrowth >= 0 ? '+' : ''}${scenarioGrowth.toFixed(1)}% from month 1 to month ${scenarioValues.length}`
+                  : 'No scenario data available yet'}
               </span>
             </p>
           </div>
@@ -292,43 +331,41 @@ const Predictions = () => {
           <div className="h-48 relative">
             <svg className="w-full h-full" viewBox="0 0 300 150" preserveAspectRatio="none">
               {/* Confidence interval band */}
-              <path
-                d="M0,100 Q75,80 150,60 T300,20 L300,60 Q225,80 150,100 T0,140 Z"
-                fill="rgba(6, 182, 212, 0.1)"
-                stroke="none"
-              />
+              {confidenceBandPath && (
+                <path d={confidenceBandPath} fill="rgba(6, 182, 212, 0.12)" stroke="none" />
+              )}
               
               {/* Actual data line */}
-              <path
-                d="M0,100 L50,95 L100,85"
-                fill="none"
-                stroke="#06b6d4"
-                strokeWidth="2"
-              />
+              {actualPath && (
+                <path d={actualPath} fill="none" stroke="#06b6d4" strokeWidth="2" />
+              )}
               
               {/* Predicted data line (dashed) */}
-              <path
-                d="M100,85 L150,70 L200,55 L250,40 L300,25"
-                fill="none"
-                stroke="#06b6d4"
-                strokeWidth="2"
-                strokeDasharray="5,5"
-              />
+              {predictedPath && (
+                <path d={predictedPath} fill="none" stroke="#06b6d4" strokeWidth="2" strokeDasharray="5,5" />
+              )}
 
               {/* Data points */}
-              <circle cx="0" cy="100" r="4" fill="#06b6d4" />
-              <circle cx="50" cy="95" r="4" fill="#06b6d4" />
-              <circle cx="100" cy="85" r="4" fill="#06b6d4" />
-              <circle cx="150" cy="70" r="4" fill="#06b6d4" opacity="0.5" />
-              <circle cx="200" cy="55" r="4" fill="#06b6d4" opacity="0.5" />
-              <circle cx="250" cy="40" r="4" fill="#06b6d4" opacity="0.5" />
+              {actualPoints.map((point) => (
+                <circle key={`actual-${point.x}`} cx={toX(point.x)} cy={toY(point.y)} r="3.5" fill="#06b6d4" />
+              ))}
+              {predictedPoints.map((point) => (
+                <circle
+                  key={`pred-${point.x}`}
+                  cx={toX(point.x)}
+                  cy={toY(point.y)}
+                  r="3.5"
+                  fill="#06b6d4"
+                  opacity={timeline[point.x]?.actual == null ? 0.55 : 1}
+                />
+              ))}
             </svg>
 
             {/* Y-axis labels */}
             <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-xs text-slate-500">
-              <span>$60K</span>
-              <span>$40K</span>
-              <span>$20K</span>
+              {yTicks.map((label) => (
+                <span key={label}>{label}</span>
+              ))}
             </div>
           </div>
 
