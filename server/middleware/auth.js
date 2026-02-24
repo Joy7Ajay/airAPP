@@ -22,9 +22,21 @@ export const verifyToken = (req, res, next) => {
 
 // Check if user is admin
 export const isAdmin = (req, res, next) => {
-  if (req.user.role !== 'admin') {
+  const user = db.prepare(`
+    SELECT role, status, is_deleted
+    FROM users
+    WHERE id = ?
+  `).get(req.user.id);
+
+  if (!user || user.is_deleted === 1) {
     return res.status(403).json({ message: 'Admin access required' });
   }
+
+  if (user.status !== 'approved' || user.role !== 'admin') {
+    return res.status(403).json({ message: 'Admin access required' });
+  }
+
+  req.user.role = user.role;
   next();
 };
 

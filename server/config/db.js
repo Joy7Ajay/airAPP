@@ -194,6 +194,34 @@ db.exec(`
   )
 `);
 
+// Per-user feature permissions controlled by admin
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_permissions (
+    user_id INTEGER PRIMARY KEY,
+    overview INTEGER DEFAULT 1,
+    analytics INTEGER DEFAULT 1,
+    ai_insights INTEGER DEFAULT 0,
+    predictions INTEGER DEFAULT 0,
+    data_view INTEGER DEFAULT 1,
+    data_import INTEGER DEFAULT 0,
+    data_export INTEGER DEFAULT 0,
+    users INTEGER DEFAULT 0,
+    security INTEGER DEFAULT 0,
+    audit INTEGER DEFAULT 0,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
+
+// Backfill permission rows for existing non-admin users
+db.exec(`
+  INSERT OR IGNORE INTO user_permissions
+  (user_id, overview, analytics, ai_insights, predictions, data_view, data_import, data_export, users, security, audit)
+  SELECT id, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0
+  FROM users
+  WHERE role = 'user'
+`);
+
 // Optional first-run admin bootstrap via environment variables.
 const adminEmail = (process.env.ADMIN_EMAIL || '').trim();
 const adminName = (process.env.ADMIN_BOOTSTRAP_NAME || 'System Administrator').trim();

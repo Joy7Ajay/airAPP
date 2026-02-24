@@ -9,6 +9,7 @@ import {
   sendAdminTransferCompleteEmail 
 } from '../config/email.js';
 import crypto from 'crypto';
+import { getUserPermissions } from '../utils/permissions.js';
 
 // Helper function to generate 6-digit OTP
 const generateOTP = () => {
@@ -377,6 +378,8 @@ router.get('/me', async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    const permissions = getUserPermissions(user.id, user.role);
+
     res.json({
       user: {
         id: user.id,
@@ -384,6 +387,7 @@ router.get('/me', async (req, res) => {
         email: user.email,
         role: user.role,
         status: user.status,
+        permissions,
       },
     });
   } catch {

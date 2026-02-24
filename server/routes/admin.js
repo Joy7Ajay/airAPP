@@ -11,6 +11,7 @@ import {
   sendDeletionVerificationEmail
 } from '../config/email.js';
 import { logAudit } from './auth.js';
+import { ensureUserPermissions, getAllAccessPermissions, getUserPermissions, updateUserPermissions } from '../utils/permissions.js';
 
 const router = express.Router();
 
@@ -90,6 +91,8 @@ router.post('/approve/:id', async (req, res) => {
       SET status = 'approved', approved_at = CURRENT_TIMESTAMP, approved_by = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).run(req.user.id, id);
+
+    ensureUserPermissions(Number(id));
     
     // Create notification
     db.prepare(`
@@ -213,6 +216,77 @@ router.get('/stats', (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching stats:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// GET /api/admin/users/permissions - Get users and permission matrix
+router.get('/users/permissions', (req, res) => {
+  try {
+    const users = db.prepare(`
+      SELECT id, full_name, email, role, status
+      FROM users
+      WHERE (is_deleted = 0 OR is_deleted IS NULL) AND status = 'approved'
+      ORDER BY role DESC, full_name ASC
+    `).all();
+
+    const mapped = users.map((user) => ({
+      id: user.id,
+      name: user.full_name,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+      permissions: user.role === 'admin'
+        ? getAllAccessPermissions()
+        : getUserPermissions(user.id, user.role),
+    }));
+
+    res.json({ users: mapped });
+  } catch (error) {
+    console.error('Error fetching user permissions:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// PUT /api/admin/users/:id/permissions - Update a user's permissions
+router.put('/users/:id/permissions', (req, res) => {
+  try {
+    const userId = Number(req.params.id);
+    const { permissions } = req.body;
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(400).json({ message: 'Invalid user id' });
+    }
+
+    if (!permissions || typeof permissions !== 'object') {
+      return res.status(400).json({ message: 'Permissions object is required' });
+    }
+
+    const targetUser = db.prepare(`
+      SELECT id, role, status
+      FROM users
+      WHERE id = ? AND (is_deleted = 0 OR is_deleted IS NULL)
+    `).get(userId);
+
+    if (!targetUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (targetUser.role === 'admin') {
+      return res.status(400).json({ message: 'Admin permissions are fixed to full access' });
+    }
+
+    if (targetUser.status !== 'approved') {
+      return res.status(400).json({ message: 'User must be approved before assigning permissions' });
+    }
+
+    const updated = updateUserPermissions(userId, permissions);
+
+    logAudit('user_permissions_updated', 'security', req.user.id, userId, { permissions: updated }, req);
+
+    res.json({ message: 'Permissions updated', permissions: updated });
+  } catch (error) {
+    console.error('Error updating user permissions:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

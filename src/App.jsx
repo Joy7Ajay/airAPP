@@ -3,6 +3,12 @@ import Welcome from './pages/Welcome';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import ResetPassword from './pages/ResetPassword';
+import UserLayout from './pages/portal/UserLayout';
+import PortalOverview from './pages/portal/PortalOverview';
+import PortalAnalytics from './pages/portal/PortalAnalytics';
+import PortalAIInsights from './pages/portal/PortalAIInsights';
+import PortalPredictions from './pages/portal/PortalPredictions';
+import PortalData from './pages/portal/PortalData';
 
 // Admin pages
 import AdminLayout from './pages/admin/AdminLayout';
@@ -25,6 +31,15 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+
+        {/* User Portal Routes */}
+        <Route path="/portal" element={<UserLayout />}>
+          <Route index element={<PortalOverview />} />
+          <Route path="analytics" element={<PortalAnalytics />} />
+          <Route path="ai-insights" element={<PortalAIInsights />} />
+          <Route path="predictions" element={<PortalPredictions />} />
+          <Route path="data" element={<PortalData />} />
+        </Route>
         
         {/* Admin Routes with Layout */}
         <Route path="/admin" element={<AdminLayout />}>

@@ -315,16 +315,16 @@ const Overview = () => {
       </div>
 
       {/* 3D Terrain Map Statistics Panel */}
-      <div className="bg-gradient-to-br from-slate-50 via-white to-slate-100 rounded-3xl border border-slate-200 overflow-hidden shadow-xl">
+      <div className="bg-gradient-to-br from-slate-950 via-[#031015] to-slate-950 rounded-3xl border border-emerald-400/20 overflow-hidden shadow-[0_0_70px_rgba(16,185,129,0.14)]">
         <div className="grid grid-cols-1 lg:grid-cols-12">
           {/* Left Stats Panel */}
-          <div className="lg:col-span-3 p-6 bg-white/80 border-r border-slate-200">
-            <h3 className="text-slate-800 text-lg font-semibold mb-1">General statistics</h3>
+          <div className="lg:col-span-3 p-6 bg-slate-950/55 border-r border-slate-800">
+            <h3 className="text-emerald-50 text-lg font-semibold mb-1">General statistics</h3>
             <div className="flex items-center gap-2 mb-4">
-              <span className="text-slate-500 text-sm">All passengers</span>
+              <span className="text-slate-300 text-sm">All passengers</span>
               <button 
                 onClick={() => navigate('/admin/airports')}
-                className="text-indigo-500 text-xs hover:text-indigo-600 flex items-center gap-1"
+                className="text-emerald-400 text-xs hover:text-emerald-300 flex items-center gap-1"
               >
                 DETAIL
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -333,13 +333,13 @@ const Overview = () => {
               </button>
             </div>
             
-            <p className="text-5xl font-bold text-slate-800 mb-6">1,974,970</p>
+            <p className="text-5xl font-bold text-emerald-50 mb-6">1,974,970</p>
 
             {/* Total Earning Card */}
-            <div className="bg-gradient-to-br from-slate-50 to-white rounded-xl p-4 border border-slate-100 shadow-sm mb-5">
-              <p className="text-slate-500 text-xs mb-1">Total earning</p>
+            <div className="bg-gradient-to-br from-slate-900/80 to-slate-900/50 rounded-xl p-4 border border-slate-800 shadow-sm mb-5">
+              <p className="text-slate-400 text-xs mb-1">Total earning</p>
               <div className="flex items-baseline gap-2">
-                <p className="text-2xl font-bold text-slate-800">$12,875</p>
+                <p className="text-2xl font-bold text-white">$12,875</p>
                 <span className="text-emerald-500 text-xs font-medium flex items-center">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
@@ -354,7 +354,7 @@ const Overview = () => {
                 {[40, 60, 45, 80, 55, 70, 50, 90, 65, 75, 85, 60].map((h, i) => (
                   <div 
                     key={i} 
-                    className={`flex-1 rounded-t ${i < 6 ? 'bg-red-400' : 'bg-indigo-400'}`}
+                    className={`flex-1 rounded-t ${i < 6 ? 'bg-emerald-500/70' : 'bg-cyan-400/70'}`}
                     style={{ height: `${h}%` }}
                   />
                 ))}
@@ -376,18 +376,18 @@ const Overview = () => {
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${item.color}`}></div>
-                  <span className="text-slate-600 flex-1">{item.name}</span>
-                  <span className="text-slate-400 text-xs">{item.code}</span>
-                  <span className="text-slate-800 font-medium">{item.value}</span>
+                  <span className="text-slate-300 flex-1">{item.name}</span>
+                  <span className="text-slate-500 text-xs">{item.code}</span>
+                  <span className="text-white font-medium">{item.value}</span>
                 </div>
               ))}
             </div>
 
             {/* Bottom Card */}
-            <div className="mt-5 bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
-              <p className="text-slate-500 text-xs mb-1">Total earning</p>
+            <div className="mt-5 bg-slate-900/70 rounded-xl p-4 border border-slate-800 shadow-sm">
+              <p className="text-slate-400 text-xs mb-1">Total earning</p>
               <div className="flex items-baseline gap-2">
-                <p className="text-2xl font-bold text-slate-800">$12,875</p>
+                <p className="text-2xl font-bold text-white">$12,875</p>
                 <span className="text-emerald-500 text-xs font-medium flex items-center">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
@@ -403,12 +403,12 @@ const Overview = () => {
           <div className="lg:col-span-7 relative h-[520px] overflow-hidden">
             {/* Token Input Modal */}
             {showTokenInput && (
-              <div className="absolute inset-0 z-20 bg-white/95 backdrop-blur flex items-center justify-center p-6">
-                <div className="bg-white rounded-2xl p-6 shadow-xl border border-slate-200 max-w-md w-full">
-                  <h3 className="text-lg font-semibold text-slate-800 mb-2">Enter Mapbox Token</h3>
-                  <p className="text-slate-500 text-sm mb-4">
+              <div className="absolute inset-0 z-20 bg-slate-950/90 backdrop-blur flex items-center justify-center p-6">
+                <div className="bg-slate-900 rounded-2xl p-6 shadow-xl border border-slate-700 max-w-md w-full">
+                  <h3 className="text-lg font-semibold text-white mb-2">Enter Mapbox Token</h3>
+                  <p className="text-slate-400 text-sm mb-4">
                     Get a free token from{' '}
-                    <a href="https://account.mapbox.com/auth/signup/" target="_blank" rel="noopener noreferrer" className="text-indigo-500 hover:underline">
+                    <a href="https://account.mapbox.com/auth/signup/" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">
                       mapbox.com
                     </a>
                   </p>
@@ -417,12 +417,12 @@ const Overview = () => {
                     value={mapboxToken}
                     onChange={(e) => setMapboxToken(e.target.value)}
                     placeholder="pk.eyJ1Ijoi..."
-                    className="w-full px-4 py-3 border border-slate-300 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent mb-4"
+                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent mb-4"
                   />
                   <div className="flex gap-3">
                     <button
                       onClick={() => setShowTokenInput(false)}
-                      className="flex-1 px-4 py-2 border border-slate-300 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors"
+                      className="flex-1 px-4 py-2 border border-slate-700 text-slate-300 rounded-xl hover:bg-slate-800 transition-colors"
                     >
                       Cancel
                     </button>
@@ -431,7 +431,7 @@ const Overview = () => {
                         localStorage.setItem('mapboxToken', mapboxToken);
                         setShowTokenInput(false);
                       }}
-                      className="flex-1 px-4 py-2 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 transition-colors"
+                      className="flex-1 px-4 py-2 bg-emerald-500 text-slate-950 font-semibold rounded-xl hover:bg-emerald-400 transition-colors"
                     >
                       Save Token
                     </button>
@@ -451,7 +451,7 @@ const Overview = () => {
             {/* Settings button */}
             <button
               onClick={() => setShowTokenInput(true)}
-              className="absolute top-4 right-4 z-10 w-8 h-8 bg-white/90 backdrop-blur rounded-lg flex items-center justify-center text-slate-500 hover:bg-white hover:text-slate-700 transition-colors shadow-lg"
+              className="absolute top-4 right-4 z-10 w-8 h-8 bg-slate-950/85 backdrop-blur rounded-lg flex items-center justify-center text-emerald-300 hover:bg-slate-900 hover:text-emerald-200 transition-colors border border-emerald-400/20 shadow-lg"
               title="Configure Mapbox Token"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -462,12 +462,12 @@ const Overview = () => {
           </div>
 
           {/* Right Stats Panel */}
-          <div className="lg:col-span-2 p-6 bg-white/80 border-l border-slate-200 flex flex-col justify-center">
+          <div className="lg:col-span-2 p-6 bg-slate-950/55 border-l border-slate-800 flex flex-col justify-center">
             {/* Navigation Icons */}
             <div className="flex flex-col items-end gap-3 mb-8">
               <button
                 onClick={handleZoomIn}
-                className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-200 transition-colors"
+                className="w-8 h-8 bg-slate-900/85 rounded-lg flex items-center justify-center text-slate-300 hover:bg-slate-800 transition-colors border border-slate-700"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -475,7 +475,7 @@ const Overview = () => {
               </button>
               <button
                 onClick={handleZoomOut}
-                className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-200 transition-colors"
+                className="w-8 h-8 bg-slate-900/85 rounded-lg flex items-center justify-center text-slate-300 hover:bg-slate-800 transition-colors border border-slate-700"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
@@ -483,7 +483,7 @@ const Overview = () => {
               </button>
               <button
                 onClick={handleRecenter}
-                className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-500 hover:bg-indigo-200 transition-colors"
+                className="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center text-emerald-300 hover:bg-emerald-500/30 transition-colors border border-emerald-400/30"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -492,7 +492,7 @@ const Overview = () => {
               <button
                 onClick={handleResetView}
                 onDoubleClick={handleFullscreen}
-                className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-200 transition-colors"
+                className="w-8 h-8 bg-slate-900/85 rounded-lg flex items-center justify-center text-slate-300 hover:bg-slate-800 transition-colors border border-slate-700"
                 title="Reset view (double-click for fullscreen)"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -505,17 +505,17 @@ const Overview = () => {
             <div className="space-y-6">
               <div>
                 <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">All Passengers</p>
-                <p className="text-3xl font-bold text-slate-800">1.97M</p>
+                <p className="text-3xl font-bold text-white">1.97M</p>
               </div>
               
               <div>
                 <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Domestic</p>
-                <p className="text-3xl font-bold text-slate-800">82,520</p>
+                <p className="text-3xl font-bold text-white">82,520</p>
               </div>
               
               <div>
                 <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">International</p>
-                <p className="text-3xl font-bold text-slate-800">1.89M</p>
+                <p className="text-3xl font-bold text-white">1.89M</p>
               </div>
               
               <div>

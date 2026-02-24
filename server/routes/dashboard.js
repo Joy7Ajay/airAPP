@@ -2,8 +2,9 @@ import express from 'express';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { verifyToken, isAdmin } from '../middleware/auth.js';
+import { verifyToken } from '../middleware/auth.js';
 import db from '../config/db.js';
+import { getUserPermissions } from '../utils/permissions.js';
 import {
   overviewData,
   analyticsData,
@@ -76,10 +77,34 @@ const buildAirportsFromDataset = (dataset) => {
 };
 
 router.use(verifyToken);
-router.use(isAdmin);
+router.use((req, res, next) => {
+  const user = db.prepare(`
+    SELECT id, role, status, is_deleted
+    FROM users
+    WHERE id = ?
+  `).get(req.user.id);
+
+  if (!user || user.is_deleted === 1) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+
+  if (user.status !== 'approved') {
+    return res.status(403).json({ message: 'Account not approved' });
+  }
+
+  req.currentUser = user;
+  req.permissions = getUserPermissions(user.id, user.role);
+  return next();
+});
+
+const requireFeature = (featureKey) => (req, res, next) => {
+  if (req.currentUser?.role === 'admin') return next();
+  if (req.permissions?.[featureKey]) return next();
+  return res.status(403).json({ message: `Missing required permission: ${featureKey}` });
+};
 
 
-router.get('/overview', (req, res) => {
+router.get('/overview', requireFeature('overview'), (req, res) => {
   const dataset = loadAiDataset();
   if (!dataset) {
     if (allowSampleData) return res.json({ ...overviewData, updatedAt: new Date().toISOString() });
@@ -134,7 +159,7 @@ router.get('/overview', (req, res) => {
   });
 });
 
-router.get('/analytics', (req, res) => {
+router.get('/analytics', requireFeature('analytics'), (req, res) => {
   const { range } = req.query;
   const dataset = loadAiDataset();
   if (!dataset) {
@@ -183,7 +208,7 @@ router.get('/analytics', (req, res) => {
   });
 });
 
-router.get('/ai-insights', (req, res) => {
+router.get('/ai-insights', requireFeature('ai_insights'), (req, res) => {
   const dataset = loadAiDataset();
   if (!dataset) {
     if (allowSampleData) return res.json({ ...aiInsightsData, updatedAt: new Date().toISOString() });
@@ -204,7 +229,7 @@ router.get('/ai-insights', (req, res) => {
   });
 });
 
-router.get('/predictions', (req, res) => {
+router.get('/predictions', requireFeature('predictions'), (req, res) => {
   const dataset = loadAiDataset();
   if (!dataset) {
     if (allowSampleData) return res.json({ ...predictionsData, updatedAt: new Date().toISOString() });
@@ -225,7 +250,7 @@ router.get('/predictions', (req, res) => {
   });
 });
 
-router.get('/airports', (req, res) => {
+router.get('/airports', requireFeature('analytics'), (req, res) => {
   const dataset = loadAiDataset();
   if (!dataset) {
     if (allowSampleData) return res.json({ ...airportsData, updatedAt: new Date().toISOString() });
@@ -235,7 +260,7 @@ router.get('/airports', (req, res) => {
   return res.json({ ...airportData, updatedAt: new Date().toISOString() });
 });
 
-router.get('/data', (req, res) => {
+router.get('/data', requireFeature('data_view'), (req, res) => {
   if (!allowSampleData) {
     const dataset = loadAiDataset();
     const fallback = emptyDataResponse();

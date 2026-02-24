@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
 const API_URL = 'http://localhost:5000/api';
+const getLandingPath = (user) => (user?.role === 'admin' ? '/admin' : '/portal');
 
 const Login = () => {
   const navigate = useNavigate();
@@ -125,7 +126,7 @@ const Login = () => {
       // Direct login (fallback, shouldn't happen with OTP enabled)
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
-      navigate('/admin');
+      navigate(getLandingPath(data.user));
     } catch (err) {
       setError('Unable to connect to server. Please try again.');
       setIsLoading(false);
@@ -201,7 +202,7 @@ const Login = () => {
       // Store token and user info
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
-      navigate('/admin');
+      navigate(getLandingPath(data.user));
     } catch (err) {
       setError('Unable to connect to server. Please try again.');
       setOtpLoading(false);

@@ -4,7 +4,7 @@ import { useOutletContext } from 'react-router-dom';
 const API_URL = 'http://localhost:5000/api';
 
 const Users = () => {
-  const { user, token } = useOutletContext();
+  const { token } = useOutletContext();
   const [isLoading, setIsLoading] = useState(true);
   const [mainTab, setMainTab] = useState('users'); // 'users' or 'permissions'
   const [activeTab, setActiveTab] = useState('pending');
@@ -30,85 +30,11 @@ const Users = () => {
     { id: 'audit', name: 'Audit Logs', icon: '📋', description: 'View logs' },
   ];
 
-  // Mock users with permissions (in real app, this would come from API)
-  const [userPermissions, setUserPermissions] = useState([
-    { 
-      id: 1, 
-      name: 'System Administrator', 
-      email: 'ljoy23200@gmail.com', 
-      role: 'admin',
-      status: 'online',
-      permissions: {
-        overview: true, analytics: true, ai_insights: true, predictions: true,
-        data_view: true, data_import: true, data_export: true,
-        users: true, security: true, audit: true
-      }
-    },
-    { 
-      id: 2, 
-      name: 'Sarah Nakamya', 
-      email: 'sarah.n@airapp.ug', 
-      role: 'analyst',
-      status: 'online',
-      permissions: {
-        overview: true, analytics: true, ai_insights: true, predictions: true,
-        data_view: true, data_import: false, data_export: true,
-        users: false, security: false, audit: false
-      }
-    },
-    { 
-      id: 3, 
-      name: 'John Mukasa', 
-      email: 'j.mukasa@airapp.ug', 
-      role: 'viewer',
-      status: 'offline',
-      permissions: {
-        overview: true, analytics: true, ai_insights: false, predictions: false,
-        data_view: true, data_import: false, data_export: false,
-        users: false, security: false, audit: false
-      }
-    },
-    { 
-      id: 4, 
-      name: 'Grace Atim', 
-      email: 'grace.a@airapp.ug', 
-      role: 'manager',
-      status: 'online',
-      permissions: {
-        overview: true, analytics: true, ai_insights: true, predictions: true,
-        data_view: true, data_import: true, data_export: true,
-        users: true, security: false, audit: true
-      }
-    },
-    { 
-      id: 5, 
-      name: 'David Opio', 
-      email: 'd.opio@airapp.ug', 
-      role: 'analyst',
-      status: 'offline',
-      permissions: {
-        overview: true, analytics: true, ai_insights: true, predictions: false,
-        data_view: true, data_import: false, data_export: true,
-        users: false, security: false, audit: false
-      }
-    },
-    { 
-      id: 6, 
-      name: 'Faith Nambi', 
-      email: 'f.nambi@airapp.ug', 
-      role: 'viewer',
-      status: 'online',
-      permissions: {
-        overview: true, analytics: false, ai_insights: false, predictions: false,
-        data_view: true, data_import: false, data_export: false,
-        users: false, security: false, audit: false
-      }
-    },
-  ]);
+  const [userPermissions, setUserPermissions] = useState([]);
 
   const loadPermissions = async () => {
     try {
-      const res = await fetch(`${API_URL}/actions/users/permissions`, {
+      const res = await fetch(`${API_URL}/admin/users/permissions`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -120,47 +46,101 @@ const Users = () => {
     }
   };
 
+  const savePermissions = async (userId, permissions, prevState) => {
+    try {
+      const res = await fetch(`${API_URL}/admin/users/${userId}/permissions`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ permissions }),
+      });
+      if (!res.ok) {
+        throw new Error('Failed to update permissions');
+      }
+    } catch (error) {
+      setUserPermissions(prevState);
+      alert('Failed to save permissions. Changes were reverted.');
+    }
+  };
+
   // Toggle permission
   const togglePermission = (userId, featureId) => {
-    setUserPermissions(prev => prev.map(u => {
-      if (u.id === userId) {
-        return {
-          ...u,
-          permissions: {
-            ...u.permissions,
-            [featureId]: !u.permissions[featureId]
-          }
-        };
-      }
-      return u;
-    }));
+    const prevState = userPermissions;
+    let nextPermissions = null;
+    const nextState = userPermissions.map((u) => {
+      if (u.id !== userId || u.role === 'admin') return u;
+      nextPermissions = {
+        ...u.permissions,
+        [featureId]: !u.permissions[featureId],
+      };
+      return { ...u, permissions: nextPermissions };
+    });
+    setUserPermissions(nextState);
+    if (nextPermissions) savePermissions(userId, nextPermissions, prevState);
   };
 
   // Toggle all permissions for a user
   const toggleAllForUser = (userId) => {
-    setUserPermissions(prev => prev.map(u => {
-      if (u.id === userId) {
-        const allEnabled = Object.values(u.permissions).every(v => v);
-        const newPermissions = {};
-        Object.keys(u.permissions).forEach(key => {
-          newPermissions[key] = !allEnabled;
-        });
-        return { ...u, permissions: newPermissions };
-      }
-      return u;
-    }));
+    const prevState = userPermissions;
+    let nextPermissions = null;
+    const nextState = userPermissions.map((u) => {
+      if (u.id !== userId || u.role === 'admin') return u;
+      const allEnabled = Object.values(u.permissions).every((v) => v);
+      const newPermissions = Object.keys(u.permissions).reduce((acc, key) => {
+        acc[key] = !allEnabled;
+        return acc;
+      }, {});
+      nextPermissions = newPermissions;
+      return { ...u, permissions: newPermissions };
+    });
+    setUserPermissions(nextState);
+    if (nextPermissions) savePermissions(userId, nextPermissions, prevState);
   };
 
   // Toggle all permissions for a feature
   const toggleAllForFeature = (featureId) => {
-    const allEnabled = userPermissions.every(u => u.permissions[featureId]);
-    setUserPermissions(prev => prev.map(u => ({
-      ...u,
-      permissions: {
-        ...u.permissions,
-        [featureId]: !allEnabled
-      }
-    })));
+    const editableUsers = userPermissions.filter((u) => u.role !== 'admin');
+    if (editableUsers.length === 0) return;
+
+    const prevState = userPermissions;
+    const allEnabled = editableUsers.every((u) => u.permissions[featureId]);
+    const nextState = userPermissions.map((u) => {
+      if (u.role === 'admin') return u;
+      return {
+        ...u,
+        permissions: {
+          ...u.permissions,
+          [featureId]: !allEnabled,
+        },
+      };
+    });
+    setUserPermissions(nextState);
+
+    Promise.all(
+      nextState
+        .filter((u) => u.role !== 'admin')
+        .map((u) =>
+          fetch(`${API_URL}/admin/users/${u.id}/permissions`, {
+            method: 'PUT',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ permissions: u.permissions }),
+          }),
+        ),
+    )
+      .then((responses) => {
+        if (responses.some((r) => !r.ok)) {
+          throw new Error('One or more permission updates failed');
+        }
+      })
+      .catch(() => {
+        setUserPermissions(prevState);
+        alert('Failed to save feature updates. Changes were reverted.');
+      });
   };
 
   // Filter users by search
@@ -747,7 +727,7 @@ const Users = () => {
                         <div className="flex items-center gap-3">
                           {/* Status indicator */}
                           <div className={`w-2 h-2 rounded-full ${
-                            permUser.status === 'online' ? 'bg-emerald-400' : 'bg-slate-600'
+                            permUser.status === 'approved' ? 'bg-emerald-400' : 'bg-slate-600'
                           }`} />
                           
                           {/* Avatar */}
@@ -766,7 +746,7 @@ const Users = () => {
                                 </span>
                               )}
                             </div>
-                            <span className="text-xs text-slate-500">{permUser.status === 'online' ? 'Online' : 'Offline'}</span>
+                            <span className="text-xs text-slate-500 capitalize">{permUser.status}</span>
                           </div>
                         </div>
                       </td>
